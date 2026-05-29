@@ -18,3 +18,9 @@ double BusinessPassenger::getCancellationRefundPercentage() const {
 std::string BusinessPassenger::getPassengerType() const {
     return "Business";
 }
+
+void BusinessPassenger::print(std::ostream& os) const {
+    Passenger::print(os);
+    os << "\nBenefits     : Business lounge access, priority boarding, extra legroom.";
+}
+

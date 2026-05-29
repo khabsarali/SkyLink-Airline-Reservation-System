@@ -128,7 +128,7 @@ void Airline::listPassengers() const {
 }
 
 // Booking System
-std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, const std::string& flightNo) {
+std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, const std::string& flightNo, int seatNo) {
     auto passenger = findPassenger(passengerId);
     if (!passenger) {
         throw InvalidInputException("Booking Failed: Passenger ID " + passengerId + " not found.");
@@ -139,8 +139,7 @@ std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, cons
         throw InvalidInputException("Booking Failed: Flight " + flightNo + " not found.");
     }
 
-    // Rule 1: Reject duplicate booking
-    // Passing seat number 1 to avoid triggering seatNumber <= 0 validation
+    // Rule 1: Reject duplicate booking (same passenger confirmed on same flight)
     Ticket tempTicket("TEMP", passenger, flight, 1, 0.0);
     auto dupIt = std::find_if(tickets.begin(), tickets.end(), [&](const auto& t) {
         return t->getBookingStatus() == "Confirmed" && *t == tempTicket;
@@ -154,8 +153,45 @@ std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, cons
         throw FlightFullException(flightNo);
     }
 
-    // Rule 3: Auto seat allocation
-    int seatNo = flight->getTotalSeats() - flight->getAvailableSeats() + 1;
+    // Rule 3: Seat selection and validation
+    if (seatNo > 0) {
+        if (seatNo > flight->getTotalSeats()) {
+            throw InvalidInputException("Booking Failed: Seat number " + std::to_string(seatNo) + 
+                                       " exceeds flight capacity of " + std::to_string(flight->getTotalSeats()) + ".");
+        }
+        // Check if the requested seat is already booked
+        for (const auto& t : tickets) {
+            if (t->getFlight()->getFlightNumber() == flightNo && 
+                t->getSeatNumber() == seatNo && 
+                t->getBookingStatus() == "Confirmed") {
+                throw InvalidInputException("Booking Failed: Seat number " + std::to_string(seatNo) + 
+                                           " is already occupied on flight " + flightNo + ".");
+            }
+        }
+    } else {
+        // Auto-allocate: find first unoccupied seat
+        int allocatedSeat = 0;
+        for (int s = 1; s <= flight->getTotalSeats(); ++s) {
+            bool occupied = false;
+            for (const auto& t : tickets) {
+                if (t->getFlight()->getFlightNumber() == flightNo && 
+                    t->getSeatNumber() == s && 
+                    t->getBookingStatus() == "Confirmed") {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied) {
+                allocatedSeat = s;
+                break;
+            }
+        }
+        if (allocatedSeat == 0) {
+            throw FlightFullException(flightNo);
+        }
+        seatNo = allocatedSeat;
+    }
+
     flight->bookSeat();
 
     // Price calculation: Base Fare divided by loyalty multiplier (discount for higher status)
@@ -166,6 +202,9 @@ std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, cons
     std::string ticketId = "TKT-" + flightNo + "-" + std::to_string(100 + tickets.size() + 1);
     auto newTicket = std::make_shared<Ticket>(ticketId, passenger, flight, seatNo, finalFare, "Confirmed");
     tickets.push_back(newTicket);
+
+    // Track ticket in Passenger's history using weak_ptr
+    passenger->addTicketToHistory(newTicket);
 
     return newTicket;
 }
@@ -502,7 +541,126 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
         if (passenger && flight) {
             auto ticket = std::make_shared<Ticket>(ticketId, passenger, flight, seatNo, fare, status);
             tickets.push_back(ticket);
+            passenger->addTicketToHistory(ticket);
         }
     }
     inTickets.close();
 }
+
+void Airline::showSeatMap(const std::string& flightNo) const {
+    auto flight = findFlight(flightNo);
+    if (!flight) {
+        throw InvalidInputException("Flight " + flightNo + " not found.");
+    }
+    int totalSeats = flight->getTotalSeats();
+    
+    // Scan occupied seats
+    std::vector<bool> booked(totalSeats + 1, false);
+    for (const auto& tkt : tickets) {
+        if (tkt->getFlight()->getFlightNumber() == flightNo && tkt->getBookingStatus() == "Confirmed") {
+            int s = tkt->getSeatNumber();
+            if (s >= 1 && s <= totalSeats) {
+                booked[s] = true;
+            }
+        }
+    }
+
+    std::cout << "\n" << UIHelper::BOLD << UIHelper::CYAN 
+              << "=======================================================\n"
+              << "             SEAT MAP FOR FLIGHT: " << flightNo << "\n"
+              << "=======================================================\n" << UIHelper::RESET;
+    std::cout << "  Row Letters (A-Z) and Column Numbers (1-3) represent seats.\n";
+    std::cout << "  Available seats display code (e.g. A1). Booked seats marked 'X'.\n\n";
+
+    int numRows = (totalSeats + 2) / 3;
+    for (int r = 0; r < numRows; ++r) {
+        char rowLetter = 'A' + r;
+        std::cout << "  ";
+        for (int c = 0; c < 3; ++c) {
+            int seatNum = r * 3 + c + 1;
+            if (seatNum <= totalSeats) {
+                if (booked[seatNum]) {
+                    std::cout << UIHelper::RED << "X " << UIHelper::RESET;
+                } else {
+                    std::cout << UIHelper::GREEN << rowLetter << (c + 1) << UIHelper::RESET;
+                }
+            } else {
+                std::cout << "  ";
+            }
+            if (c < 2) {
+                std::cout << "    "; // Spacing between columns
+            }
+        }
+        std::cout << "\n";
+    }
+    std::cout << UIHelper::BOLD << UIHelper::CYAN 
+              << "=======================================================\n" << UIHelper::RESET;
+}
+
+void Airline::showMonthlyRevenueReport(const std::string& monthYear) const {
+    if (flights.empty()) {
+        std::cout << "No flights registered in the system.\n";
+        return;
+    }
+
+    // Map to aggregate revenues per flight for the specified month/year
+    std::map<std::string, double> flightRevenues;
+    for (const auto& f : flights) {
+        flightRevenues[f->getFlightNumber()] = 0.0;
+    }
+
+    for (const auto& ticket : tickets) {
+        if (ticket->getBookingStatus() == "Confirmed") {
+            if (ticket->getFlight()->getDepartureTime().find(monthYear) != std::string::npos) {
+                flightRevenues[ticket->getFlight()->getFlightNumber()] += ticket->getFarePaid();
+            }
+        }
+    }
+
+    struct FlightRevenue {
+        std::shared_ptr<Flight> flightPtr;
+        double revenue;
+    };
+
+    std::vector<FlightRevenue> revenueList;
+    for (const auto& f : flights) {
+        if (f->getDepartureTime().find(monthYear) != std::string::npos) {
+            revenueList.push_back({f, flightRevenues[f->getFlightNumber()]});
+        }
+    }
+
+    if (revenueList.empty()) {
+        UIHelper::printWarningMessage("No flights scheduled for the month: " + monthYear);
+        return;
+    }
+
+    // Sort using STL algorithm std::sort in descending order
+    std::sort(revenueList.begin(), revenueList.end(), [](const auto& a, const auto& b) {
+        return a.revenue > b.revenue;
+    });
+
+    std::cout << "\n" << UIHelper::BOLD << UIHelper::MAGENTA
+              << "=======================================================\n"
+              << "          MONTHLY REVENUE REPORT: " << monthYear << "\n"
+              << "=======================================================\n" << UIHelper::RESET;
+    std::cout << UIHelper::BOLD << UIHelper::MAGENTA << std::left
+              << std::setw(12) << "Flight No"
+              << std::setw(15) << "Type"
+              << std::setw(15) << "Destination"
+              << "Revenue Generated\n" << UIHelper::RESET;
+    std::cout << UIHelper::MAGENTA << std::string(55, '-') << UIHelper::RESET << "\n";
+
+    double totalMonthlyRevenue = 0.0;
+    for (const auto& item : revenueList) {
+        std::cout << std::left
+                  << std::setw(12) << item.flightPtr->getFlightNumber()
+                  << std::setw(15) << item.flightPtr->getFlightType()
+                  << std::setw(15) << item.flightPtr->getDestination()
+                  << UIHelper::BOLD << UIHelper::GREEN << "$" << std::fixed << std::setprecision(2) << item.revenue << UIHelper::RESET << "\n";
+        totalMonthlyRevenue += item.revenue;
+    }
+    std::cout << UIHelper::MAGENTA << std::string(55, '-') << UIHelper::RESET << "\n"
+              << "Total Monthly Revenue: " << UIHelper::BOLD << UIHelper::GREEN << "$" << totalMonthlyRevenue << UIHelper::RESET << "\n"
+              << UIHelper::MAGENTA << "=======================================================\n" << UIHelper::RESET;
+}
+

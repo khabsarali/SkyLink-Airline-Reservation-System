@@ -1,4 +1,6 @@
 #include "Ticket.h"
+#include "Passenger.h"
+#include "Flight.h"
 #include "Exceptions.h"
 #include <iomanip>
 
@@ -21,6 +23,63 @@ Ticket::Ticket(const std::string& tId, std::shared_ptr<Passenger> p, std::shared
         throw InvalidInputException("Fare paid cannot be negative.");
     }
 }
+
+// --- RULE OF FIVE IMPLEMENTATION ---
+// 1. Destructor
+Ticket::~Ticket() {
+    // Shared pointers and std::string clean up themselves, but we declare it to satisfy the Rule of Five.
+}
+
+// 2. Copy Constructor
+Ticket::Ticket(const Ticket& other)
+    : ticketId(other.ticketId),
+      passenger(other.passenger),
+      flight(other.flight),
+      seatNumber(other.seatNumber),
+      farePaid(other.farePaid),
+      bookingStatus(other.bookingStatus) {
+}
+
+// 3. Copy Assignment Operator
+Ticket& Ticket::operator=(const Ticket& other) {
+    if (this != &other) {
+        ticketId = other.ticketId;
+        passenger = other.passenger;
+        flight = other.flight;
+        seatNumber = other.seatNumber;
+        farePaid = other.farePaid;
+        bookingStatus = other.bookingStatus;
+    }
+    return *this;
+}
+
+// 4. Move Constructor
+Ticket::Ticket(Ticket&& other) noexcept
+    : ticketId(std::move(other.ticketId)),
+      passenger(std::move(other.passenger)),
+      flight(std::move(other.flight)),
+      seatNumber(other.seatNumber),
+      farePaid(other.farePaid),
+      bookingStatus(std::move(other.bookingStatus)) {
+    other.seatNumber = 0;
+    other.farePaid = 0.0;
+}
+
+// 5. Move Assignment Operator
+Ticket& Ticket::operator=(Ticket&& other) noexcept {
+    if (this != &other) {
+        ticketId = std::move(other.ticketId);
+        passenger = std::move(other.passenger);
+        flight = std::move(other.flight);
+        seatNumber = other.seatNumber;
+        farePaid = other.farePaid;
+        bookingStatus = std::move(other.bookingStatus);
+        other.seatNumber = 0;
+        other.farePaid = 0.0;
+    }
+    return *this;
+}
+
 
 std::string Ticket::getTicketId() const {
     return ticketId;

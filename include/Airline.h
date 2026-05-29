@@ -31,7 +31,10 @@ public:
     void listPassengers() const;
 
     // Booking System
-    std::shared_ptr<Ticket> bookTicket(const std::string& passengerId, const std::string& flightNo);
+    std::shared_ptr<Ticket> bookTicket(const std::string& passengerId, const std::string& flightNo, int seatNo = 0);
+    
+    // Seat Map
+    void showSeatMap(const std::string& flightNo) const;
     
     // Cancellation System
     void cancelTicket(const std::string& ticketId);
@@ -44,6 +47,7 @@ public:
     void showTodayDepartures(const std::string& date) const;
     void showOccupancyPercentage() const;
     void showTopRevenueFlights() const;
+    void showMonthlyRevenueReport(const std::string& monthYear) const;
 
     // File Handling
     void saveData(const std::string& flightsFile, const std::string& passengersFile, const std::string& ticketsFile) const;

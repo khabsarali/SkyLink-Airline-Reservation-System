@@ -28,6 +28,7 @@ public:
     // Core layouts & banners
     static void printWelcomeBanner();
     static void printLoadingScreen(int durationMs = 1500);
+    static void printExitBanner();
     static void printFooter();
     
     // Dialogs & Popups

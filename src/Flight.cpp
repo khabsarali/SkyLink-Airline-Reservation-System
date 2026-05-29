@@ -1,5 +1,7 @@
 #include "Flight.h"
 #include "Exceptions.h"
+#include <iostream>
+#include <iomanip>
 
 Flight::Flight(const std::string& flightNum, const std::string& orig, const std::string& dest,
                const std::string& depTime, int totSeats, int availSeats)
@@ -65,3 +67,18 @@ bool Flight::releaseSeat() {
     }
     return false;
 }
+
+void Flight::print(std::ostream& os) const {
+    os << "Flight Number : " << flightNumber << "\n"
+       << "Type          : " << getFlightType() << "\n"
+       << "Route         : " << origin << " -> " << destination << "\n"
+       << "Departure Time: " << departureTime << "\n"
+       << "Seats (A/T)   : " << availableSeats << " / " << totalSeats << "\n"
+       << "Base Fare     : $" << calculateBaseFare();
+}
+
+std::ostream& operator<<(std::ostream& os, const Flight& flight) {
+    flight.print(os);
+    return os;
+}
+

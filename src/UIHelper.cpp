@@ -73,21 +73,23 @@ void UIHelper::printWelcomeBanner() {
 }
 
 void UIHelper::printLoadingScreen(int durationMs) {
-    int width = 70;
-    std::cout << BOLD << BLUE;
-    printHorizontalLine(width, '-');
-    printCenteredText("SYSTEM INITIALIZATION IN PROGRESS", width, CYAN);
-    printCenteredText("Loading Database Config... Restoring Flight Logs...", width, RESET);
-    std::cout << "| [";
-    int progressWidth = width - 8;
-    int sleepInterval = durationMs / progressWidth;
-    for (int i = 0; i < progressWidth; ++i) {
-        std::cout << "=" << std::flush;
+    std::cout << BOLD << CYAN << "Loading Airline Database...\n" << RESET;
+    std::cout << "[";
+    int progressSteps = 10;
+    int sleepInterval = durationMs / progressSteps;
+    for (int i = 0; i < progressSteps; ++i) {
+        std::cout << "#" << std::flush;
         sleepMs(sleepInterval);
     }
-    std::cout << "] |\n";
-    printHorizontalLine(width, '-');
-    std::cout << RESET << "\n";
+    std::cout << "] 100%\n\n";
+}
+
+void UIHelper::printExitBanner() {
+    std::cout << BOLD << CYAN
+              << "+================================================================================+\n"
+              << "|                  THANK YOU FOR USING SKYLINK AIRWAYS SYSTEM                    |\n"
+              << "+================================================================================+\n"
+              << RESET << "\n";
 }
 
 void UIHelper::printFooter() {

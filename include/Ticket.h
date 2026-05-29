@@ -4,8 +4,9 @@
 #include <string>
 #include <memory>
 #include <iostream>
-#include "Passenger.h"
-#include "Flight.h"
+
+class Passenger;
+class Flight;
 
 // Class representing a booked Ticket linking a Passenger to a Flight
 class Ticket {
@@ -18,8 +19,25 @@ private:
     std::string bookingStatus; // "Confirmed" or "Cancelled"
 
 public:
+    // Parametrized Constructor
     Ticket(const std::string& tId, std::shared_ptr<Passenger> p, std::shared_ptr<Flight> f,
            int seat, double fare, const std::string& status = "Confirmed");
+
+    // --- RULE OF FIVE IMPLEMENTATION ---
+    // 1. Destructor
+    ~Ticket();
+
+    // 2. Copy Constructor
+    Ticket(const Ticket& other);
+
+    // 3. Copy Assignment Operator
+    Ticket& operator=(const Ticket& other);
+
+    // 4. Move Constructor
+    Ticket(Ticket&& other) noexcept;
+
+    // 5. Move Assignment Operator
+    Ticket& operator=(Ticket&& other) noexcept;
 
     // Getters and Setters
     std::string getTicketId() const;
@@ -33,6 +51,8 @@ public:
 
     // Operator overloads
     bool operator==(const Ticket& other) const;
+
+    // Friend function for stream insertion operator overloading
     friend std::ostream& operator<<(std::ostream& os, const Ticket& ticket);
 };
 

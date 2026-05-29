@@ -53,3 +53,11 @@ double CharterFlight::getFlightHours() const {
 double CharterFlight::getOverheadFee() const {
     return overheadFee;
 }
+
+void CharterFlight::print(std::ostream& os) const {
+    Flight::print(os);
+    os << "\nHourly Rate   : $" << hourlyRate << "\n"
+       << "Flight Hours  : " << flightHours << "\n"
+       << "Overhead Fee  : $" << overheadFee;
+}
+

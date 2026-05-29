@@ -19,6 +19,7 @@ public:
     double calculateBaseFare() const override;
     void displayDetails() const override;
     std::string getFlightType() const override;
+    void print(std::ostream& os) const override;
 
     // Getters
     double getHourlyRate() const;

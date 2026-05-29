@@ -87,11 +87,48 @@ Run the generated executable:
 4. **Validation Rules**:
    - **No Duplicate Bookings**: Uses overloaded `operator==` to reject identical booking requests.
    - **No Overselling**: Throws a custom `FlightFullException` when capacity is exceeded.
-   - **Seat Allocation**: Automatic incremental seat numbering.
+   - **Seat Allocation**: Automatic incremental seat numbering or manual seat selection via an interactive Seat Map.
 5. **Polymorphic Refunds**: Custom refunds (`getCancellationRefundPercentage()`) triggered upon ticket cancellation; throws `InvalidCancellationException` if ticket isn't active.
-6. **Persistence (Save/Load)**: Automatic parsing of saved plain text database files on startup. Creates files inside the `data/` folder.
+6. **Persistence & Recovery**: Automatic parsing of saved database files on startup. Gracefully catches file missing/corruption errors, performing default database initialization to prevent crashes.
 7. **Business Reports**:
    - Query flights departing on a specific date.
    - Live fleet occupancy statistics.
-   - Top 5 revenue generating flights (uses maps and sorting).
-8. **Generic Search Engine**: Implemented via a C++ template function in `SearchTemplate.h` filtering records with user-defined lambda predicates.
+   - Top 5 revenue generating flights.
+   - Monthly Revenue Reports dynamically sorted by revenue using STL sorting algorithms (`std::sort`).
+8. **Generic Search Engine**: Redesigned template-based search utility in `SearchTemplate.h` utilizing standard STL iterators and predicates for filtering flights, passengers, and tickets.
+9. **Seat Map Visualization**: Visual seating map displaying rows (A-Z) and columns (1-3) dynamically, marking booked seats as `X` and available seats with their codes in green.
+
+---
+
+## 💎 OOP Concepts Used
+
+1. **Abstraction**: Handled using abstract base classes (`Flight` and `Passenger`) with pure virtual methods defining common interface schemas.
+2. **Encapsulation**: Leveraged throughout the framework using private class properties, custom constructors validating data bounds, and public getters/setters.
+3. **Inheritance**: Implemented for derived flight structures (`DomesticFlight`, `InternationalFlight`, `CharterFlight`) and traveler structures (`EconomyPassenger`, `BusinessPassenger`, `FirstClassPassenger`).
+4. **Runtime Polymorphism**: Achieved via Vtable/Vptr method dispatching on virtual overrides (`calculateBaseFare()`, `getBaggageAllowance()`, `getCancellationRefundPercentage()`) and virtual polymorphic print formatting (`print()`).
+5. **Memory Safety**: Enforced using smart pointers (`std::shared_ptr`, `std::unique_ptr`). We break reference loops between passengers and tickets by utilizing `std::weak_ptr` inside the passenger travel history collection.
+6. **Rule of Five**: Explicitly implemented Destructor, Copy Constructor, Copy Assignment, Move Constructor, and Move Assignment inside the `Ticket` class for resource management.
+
+---
+
+## 🖼️ Screenshots
+
+*Placeholders for console capture recordings:*
+- **Admin System Dashboard**: `[Insert Admin Interface Screenshot here]`
+- **Interactive Seat Map**: `[Insert Seat Map Layout Screenshot here]`
+- **Boarding Pass Printout**: `[Insert Boarding Pass Output Screenshot here]`
+
+---
+
+## 🔮 Future Improvements
+
+1. **Graphical User Interface (GUI)**: Transitioning from a command-line interface to a visual application using libraries like Qt or wxWidgets.
+2. **Multi-Threaded Ticketing**: Adding lock protection (`std::mutex`) to make ticket booking safe against concurrent race conditions during network queries.
+3. **Global Currency Exchange**: Integrating live currency converters for booking fares in multiple currencies.
+
+---
+
+## ⚠️ Known Limitations
+
+1. **Flat File Database**: Plaintext files are used for persistence rather than transactional SQL engines.
+2. **Synchronous File IO**: Saving data blocks execution temporarily while executing disk write calls.

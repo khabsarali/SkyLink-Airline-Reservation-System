@@ -56,3 +56,11 @@ double InternationalFlight::getFuelSurcharge() const {
 bool InternationalFlight::getRequiresVisa() const {
     return requiresVisa;
 }
+
+void InternationalFlight::print(std::ostream& os) const {
+    Flight::print(os);
+    os << "\nInt'l Tax     : $" << intlTax << "\n"
+       << "Fuel Surcharge: $" << fuelSurcharge << "\n"
+       << "Visa Required : " << (requiresVisa ? "Yes" : "No");
+}
+

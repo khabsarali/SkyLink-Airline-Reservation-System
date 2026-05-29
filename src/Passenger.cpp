@@ -1,6 +1,7 @@
 #include "Passenger.h"
 #include "Exceptions.h"
 #include "UIHelper.h"
+#include "Ticket.h"
 #include <iostream>
 #include <iomanip>
 
@@ -42,3 +43,34 @@ void Passenger::displayDetails() const {
         std::to_string(static_cast<int>(getCancellationRefundPercentage())) + "%"
     }, {10, 18, 22, 11, 7, 6});
 }
+
+void Passenger::addTicketToHistory(std::shared_ptr<Ticket> ticket) {
+    if (ticket) {
+        bookingHistory.push_back(ticket);
+    }
+}
+
+std::vector<std::shared_ptr<Ticket>> Passenger::getBookingHistory() const {
+    std::vector<std::shared_ptr<Ticket>> activeHistory;
+    for (const auto& weakTkt : bookingHistory) {
+        if (auto sharedTkt = weakTkt.lock()) {
+            activeHistory.push_back(sharedTkt);
+        }
+    }
+    return activeHistory;
+}
+
+void Passenger::print(std::ostream& os) const {
+    os << "Passenger ID : " << passengerId << "\n"
+       << "Name         : " << name << "\n"
+       << "Email        : " << email << "\n"
+       << "Type         : " << getPassengerType() << "\n"
+       << "Baggage Limit: " << getBaggageAllowance() << " kg\n"
+       << "Refund Pct   : " << getCancellationRefundPercentage() << "%";
+}
+
+std::ostream& operator<<(std::ostream& os, const Passenger& passenger) {
+    passenger.print(os);
+    return os;
+}
+

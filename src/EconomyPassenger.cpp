@@ -18,3 +18,9 @@ double EconomyPassenger::getCancellationRefundPercentage() const {
 std::string EconomyPassenger::getPassengerType() const {
     return "Economy";
 }
+
+void EconomyPassenger::print(std::ostream& os) const {
+    Passenger::print(os);
+    os << "\nBenefits     : Standard check-in, standard seating.";
+}
+

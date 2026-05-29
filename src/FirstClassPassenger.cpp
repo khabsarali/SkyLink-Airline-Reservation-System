@@ -18,3 +18,9 @@ double FirstClassPassenger::getCancellationRefundPercentage() const {
 std::string FirstClassPassenger::getPassengerType() const {
     return "FirstClass";
 }
+
+void FirstClassPassenger::print(std::ostream& os) const {
+    Passenger::print(os);
+    os << "\nBenefits     : Luxury suite access, private transfer, premium catering.";
+}
+

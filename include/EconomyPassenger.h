@@ -12,6 +12,7 @@ public:
     double getLoyaltyMultiplier() const override;
     double getCancellationRefundPercentage() const override;
     std::string getPassengerType() const override;
+    void print(std::ostream& os) const override;
 };
 
 #endif // ECONOMY_PASSENGER_H

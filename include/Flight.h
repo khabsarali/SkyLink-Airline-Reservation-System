@@ -26,6 +26,10 @@ public:
     virtual void displayDetails() const = 0;
     virtual std::string getFlightType() const = 0;
 
+    // Virtual print function for polymorphic stream insertion
+    virtual void print(std::ostream& os) const;
+    friend std::ostream& operator<<(std::ostream& os, const Flight& flight);
+
     // Getters & Encapsulation
     std::string getFlightNumber() const;
     std::string getOrigin() const;

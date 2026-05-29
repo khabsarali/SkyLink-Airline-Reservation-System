@@ -1,7 +1,7 @@
 # SkyLink Airline Reservation & Flight Management System
 ## 🎓 Comprehensive Viva Preparation & Architectural Blueprint
 
-This guide serves as an in-depth viva-ready preparation sheet, detailing every Object-Oriented Programming (OOP) construct, architectural decision, design pattern, and standard library component utilized in the SkyLink framework.
+This guide serves as an in-depth viva-ready preparation sheet, detailing every Object-Oriented Programming (OOP) construct, architectural decision, design pattern, and C++17 component utilized in the SkyLink framework.
 
 ---
 
@@ -54,37 +54,44 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 * *Why Inheritance?* Allows storing any traveler type in a generic passenger collection while keeping class-specific baggage and cancellation refund rates encapsulated.
 * *Why Virtual Functions?* Ensures cancellation refund percentages (`getCancellationRefundPercentage()`) are computed dynamically at runtime depending on the passenger's class type.
 
-### 3. Ticket
+### 3. Ticket & The Rule of Five
 * **Ticket**: Links a `Passenger` to a `Flight`. Encapsulates the seat allocated, the fare paid, and active status.
-* *Why Overloaded Operators?*
+* **Rule of Five**: Since `Ticket` owns dependencies, we explicitly define:
+  1. Destructor
+  2. Copy Constructor
+  3. Copy Assignment Operator
+  4. Move Constructor
+  5. Move Assignment Operator
+  This demonstrates correct memory management and transfer of ownership values in standard modern C++.
+* **Friend Operators / Operator Overloading**:
   - `operator==` is overloaded to check if a passenger is already booked on the same flight, enforcing duplicate booking rejection.
-  - `operator<<` is overloaded to provide a beautiful boarding pass output in one line (`std::cout << *ticket`).
+  - `operator<<` is overloaded as a `friend` function in `Ticket`, `Flight`, and `Passenger` to support clean stream insertion. In `Flight` and `Passenger`, we implement virtual `print` functions called from inside the friend `operator<<`, representing a **polymorphic stream insertion pattern**.
 
 ### 4. Airline (Controller Class)
 * Aggregates collections of `Flight`, `Passenger`, and `Ticket` objects using STL containers. Provides API for booking, cancellation, file serialization (saving/loading), and live business analytics.
 
-### 5. UIHelper (UI Utility Class)
-* Encapsulates all ANSI colors and box-drawing routines, separating console aesthetics from core airline database logic (High Cohesion, Low Coupling).
-
 ---
 
-## 🛠️ Part 3: Standard Template Library (STL), Templates, Exceptions, and Files
+## 🛠️ Part 3: Memory Safety, Templates, Exceptions, and Files
 
-### 1. STL (Standard Template Library)
+### 1. Smart Pointer Memory Safety & Reference Loops
+* We use `std::shared_ptr` to manage shared ownership of flights, passengers, and tickets.
+* **Breaking Circular References**: If `Passenger` stored a list of `std::shared_ptr<Ticket>` and `Ticket` stored a `std::shared_ptr<Passenger>`, a reference cycle would occur. Neither object would ever be deleted, creating memory leaks. We resolve this by declaring `std::vector<std::weak_ptr<Ticket>> bookingHistory;` inside `Passenger.h`. The passenger holds a weak reference to the ticket, breaking the circular link.
+
+### 2. STL (Standard Template Library) & Templates
 * **Containers**:
   - `std::vector`: The primary sequential container used for flights, passengers, and tickets due to its dynamic sizing and contiguous memory efficiency.
-  - `std::map`: Used in `Airline::showTopRevenueFlights()` to aggregate ticket sales keying off flight numbers. Maps guarantee $O(\log n)$ search efficiency.
+  - `std::map`: Used to aggregate sales keying off flight numbers in revenue reports.
 * **Algorithms**:
   - `std::find_if`: Used to search lists using custom lambda predicates (e.g., finding flights by ID).
-  - `std::sort`: Used to sort flight revenues in descending order.
-
-### 2. Templates
-* In `SearchTemplate.h`, a generic search function `searchItems` is defined:
-  ```cpp
-  template <typename T, typename Predicate>
-  std::vector<std::shared_ptr<T>> searchItems(const std::vector<std::shared_ptr<T>>& items, Predicate pred);
-  ```
-* *Why?* This eliminates writing redundant search loops. The same function template is used to filter flights by destination and passengers by name using lambdas.
+  - `std::sort`: Used to sort flight revenues in descending order for monthly revenue reports.
+* **Generic Template Search Utility**:
+  - In `SearchTemplate.h`, we define an iterator-based generic template search utility:
+    ```cpp
+    template <typename InputIt, typename OutputIt, typename Predicate>
+    OutputIt searchItems(InputIt first, InputIt last, OutputIt d_first, Predicate pred);
+    ```
+    This utility leverages standard library iterators and `std::copy_if` under the hood, enabling reuse across flights, passengers, or tickets.
 
 ### 3. Custom Exceptions
 * Custom exceptions (`FlightFullException`, `DuplicateBookingException`, `InvalidCancellationException`, `InvalidInputException`, `DatabaseException`) inherit from `std::exception`. They provide specific exception handling, allowing the UI to catch them and show warning dialogs instead of crashing.
@@ -92,11 +99,197 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 ### 4. File Handling & Serialization
 * Data is stored in plaintext files (`flights.txt`, `passengers.txt`, `tickets.txt`) inside `data/`.
 * When saving, the polymorphic types are downcast using `std::dynamic_pointer_cast` to retrieve derived-specific fields.
-* When loading, the type prefix token (e.g. `Domestic`) is parsed to construct the appropriate subclass.
+* When loading, the type prefix token (e.g. `Domestic`) is parsed to construct the appropriate subclass. In the event of missing or corrupted save files, the database triggers default initialization and rebuilds sample records.
 
 ---
 
-## 💬 Part 4: 15 Viva Questions with Top-Scoring Answers
+## 📊 Part 4: Mermaid UML Class Diagram
+
+```mermaid
+classDiagram
+    class Flight {
+        <<Abstract>>
+        # string flightNumber
+        # string origin
+        # string destination
+        # string departureTime
+        # int totalSeats
+        # int availableSeats
+        + Flight(string, string, string, string, int, int)
+        + ~Flight()*
+        + calculateBaseFare() double*
+        + displayDetails()* void*
+        + getFlightType() string*
+        + print(ostream&) void
+        + getFlightNumber() string
+        + getOrigin() string
+        + getDestination() string
+        + getDepartureTime() string
+        + getTotalSeats() int
+        + getAvailableSeats() int
+        + setAvailableSeats(int) void
+        + bookSeat() bool
+        + releaseSeat() bool
+    }
+
+    class DomesticFlight {
+        - double basePrice
+        - double domesticTax
+        + DomesticFlight(string, string, string, string, int, int, double, double)
+        + calculateBaseFare() double
+        + displayDetails() void
+        + getFlightType() string
+        + print(ostream&) void
+        + getBasePrice() double
+        + getDomesticTax() double
+    }
+
+    class InternationalFlight {
+        - double basePrice
+        - double intlTax
+        - double fuelSurcharge
+        - bool requiresVisa
+        + InternationalFlight(string, string, string, string, int, int, double, double, double, bool)
+        + calculateBaseFare() double
+        + displayDetails() void
+        + getFlightType() string
+        + print(ostream&) void
+        + getBasePrice() double
+        + getIntlTax() double
+        + getFuelSurcharge() double
+        + getRequiresVisa() bool
+    }
+
+    class CharterFlight {
+        - double hourlyRate
+        - double flightHours
+        - double overheadFee
+        + CharterFlight(string, string, string, string, int, int, double, double, double)
+        + calculateBaseFare() double
+        + displayDetails() void
+        + getFlightType() string
+        + print(ostream&) void
+        + getHourlyRate() double
+        + getFlightHours() double
+        + getOverheadFee() double
+    }
+
+    Flight <|-- DomesticFlight
+    Flight <|-- InternationalFlight
+    Flight <|-- CharterFlight
+
+    class Passenger {
+        <<Abstract>>
+        # string passengerId
+        # string name
+        # string email
+        # vector<weak_ptr<Ticket>> bookingHistory
+        + Passenger(string, string, string)
+        + ~Passenger()*
+        + getPassengerId() string
+        + getName() string
+        + getEmail() string
+        + getBaggageAllowance() double*
+        + getLoyaltyMultiplier() double*
+        + getCancellationRefundPercentage() double*
+        + getPassengerType() string*
+        + addTicketToHistory(shared_ptr<Ticket>) void
+        + getBookingHistory() vector<shared_ptr<Ticket>>
+        + displayDetails() void*
+        + print(ostream&) void
+    }
+
+    class EconomyPassenger {
+        + EconomyPassenger(string, string, string)
+        + getBaggageAllowance() double
+        + getLoyaltyMultiplier() double
+        + getCancellationRefundPercentage() double
+        + getPassengerType() string
+        + print(ostream&) void
+    }
+
+    class BusinessPassenger {
+        + BusinessPassenger(string, string, string)
+        + getBaggageAllowance() double
+        + getLoyaltyMultiplier() double
+        + getCancellationRefundPercentage() double
+        + getPassengerType() string
+        + print(ostream&) void
+    }
+
+    class FirstClassPassenger {
+        + FirstClassPassenger(string, string, string)
+        + getBaggageAllowance() double
+        + getLoyaltyMultiplier() double
+        + getCancellationRefundPercentage() double
+        + getPassengerType() string
+        + print(ostream&) void
+    }
+
+    Passenger <|-- EconomyPassenger
+    Passenger <|-- BusinessPassenger
+    Passenger <|-- FirstClassPassenger
+
+    class Ticket {
+        - string ticketId
+        - shared_ptr<Passenger> passenger
+        - shared_ptr<Flight> flight
+        - int seatNumber
+        - double farePaid
+        - string bookingStatus
+        + Ticket(string, shared_ptr<Passenger>, shared_ptr<Flight>, int, double, string)
+        + ~Ticket()
+        + Ticket(const Ticket&)
+        + operator=(const Ticket&) Ticket&
+        + Ticket(Ticket&&)
+        + operator=(Ticket&&) Ticket&
+        + getTicketId() string
+        + getPassenger() shared_ptr<Passenger>
+        + getFlight() shared_ptr<Flight>
+        + getSeatNumber() int
+        + getFarePaid() double
+        + getBookingStatus() string
+        + setBookingStatus(string) void
+        + operator==(const Ticket&) bool
+    }
+
+    class Airline {
+        - vector<shared_ptr<Flight>> flights
+        - vector<shared_ptr<Passenger>> passengers
+        - vector<shared_ptr<Ticket>> tickets
+        + Airline()
+        + addFlight(shared_ptr<Flight>) void
+        + removeFlight(string) bool
+        + findFlight(string) shared_ptr<Flight>
+        + listFlights() void
+        + registerPassenger(shared_ptr<Passenger>) void
+        + removePassenger(string) bool
+        + findPassenger(string) shared_ptr<Passenger>
+        + listPassengers() void
+        + bookTicket(string, string, int) shared_ptr<Ticket>
+        + showSeatMap(string) void
+        + cancelTicket(string) void
+        + listTickets() void
+        + findTicket(string) shared_ptr<Ticket>
+        + showTodayDepartures(string) void
+        + showOccupancyPercentage() void
+        + showTopRevenueFlights() void
+        + showMonthlyRevenueReport(string) void
+        + saveData(string, string, string) void
+        + loadData(string, string, string) void
+    }
+
+    Airline "1" *-- "many" Flight : aggregates
+    Airline "1" *-- "many" Passenger : aggregates
+    Airline "1" *-- "many" Ticket : aggregates
+    Ticket "many" o-- "1" Flight : references
+    Ticket "many" o-- "1" Passenger : references
+    Passenger "1" o-- "many" Ticket : history (weak references)
+```
+
+---
+
+## 💬 Part 5: 16 Viva Questions with Top-Scoring Answers
 
 #### Q1: What is the main difference between a Virtual Function and a Pure Virtual Function?
 > **Answer**: A virtual function has a default implementation in the base class and can be optionally overridden in derived classes. A pure virtual function is declared with `= 0` at the end, has no implementation in the base class, and **must** be overridden by non-abstract derived classes.
@@ -129,7 +322,7 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 > **Answer**: Vector is a dynamic container that handles resizing automatically, manages memory under the hood, provides bounds checking via `at()`, and keeps elements contiguous in memory, ensuring CPU cache friendliness and fast access.
 
 #### Q11: Explain how the generic search template works.
-> **Answer**: The generic `searchItems` template takes a vector of shared pointers of any type `T` and a callable predicate. It iterates over the collection, evaluates each item with the predicate, and returns a new vector of matches. This permits searching flights or passengers using the same template.
+> **Answer**: The generic `searchItems` template takes standard STL input and output iterators along with a unary predicate. It utilizes `std::copy_if` to copy matching objects to the target container. This allows it to search flights, passengers, or tickets generically.
 
 #### Q12: How are files parsed during data loading?
 > **Answer**: We read files line by line using `std::getline` and split them using a delimiter (`|`). The first token determines the type (e.g. `Economy`). Based on this type token, we call the appropriate constructor to instantiate the correct derived object.
@@ -142,3 +335,6 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 
 #### Q15: What is the advantage of utilizing `std::make_shared` over `new`?
 > **Answer**: `std::make_shared` performs a single memory allocation for both the control block (reference count) and the managed object, whereas `new` requires two separate allocations. It is faster and improves memory locality.
+
+#### Q16: What is a reference cycle and how is it broken in your code?
+> **Answer**: A reference cycle occurs when two objects reference each other using `std::shared_ptr` (e.g., Passenger points to Ticket, and Ticket points to Passenger). Because the reference count never drops to zero, the objects are never deleted. We break this cycle by having the Passenger class store tickets in a `std::vector<std::weak_ptr<Ticket>>`.

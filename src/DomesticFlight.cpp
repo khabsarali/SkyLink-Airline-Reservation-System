@@ -45,3 +45,9 @@ double DomesticFlight::getBasePrice() const {
 double DomesticFlight::getDomesticTax() const {
     return domesticTax;
 }
+
+void DomesticFlight::print(std::ostream& os) const {
+    Flight::print(os);
+    os << "\nDomestic Tax  : $" << domesticTax;
+}
+

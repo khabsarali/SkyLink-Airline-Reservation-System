@@ -8,7 +8,8 @@
 class Passenger;
 class Flight;
 
-// Class representing a booked Ticket linking a Passenger to a Flight
+// Class representing a booked Ticket linking a Passenger to a Flight.
+// Shows C++ operator overloading (== and <<) and association between classes.
 class Ticket {
 private:
     std::string ticketId;
@@ -23,21 +24,8 @@ public:
     Ticket(const std::string& tId, std::shared_ptr<Passenger> p, std::shared_ptr<Flight> f,
            int seat, double fare, const std::string& status = "Confirmed");
 
-    // --- RULE OF FIVE IMPLEMENTATION ---
-    // 1. Destructor
-    ~Ticket();
-
-    // 2. Copy Constructor
-    Ticket(const Ticket& other);
-
-    // 3. Copy Assignment Operator
-    Ticket& operator=(const Ticket& other);
-
-    // 4. Move Constructor
-    Ticket(Ticket&& other) noexcept;
-
-    // 5. Move Assignment Operator
-    Ticket& operator=(Ticket&& other) noexcept;
+    // Default destructor and copy/move assignments are perfectly managed by the compiler,
+    // which is the modern C++ best practice ("Rule of Zero").
 
     // Getters and Setters
     std::string getTicketId() const;
@@ -49,7 +37,7 @@ public:
     
     void setBookingStatus(const std::string& status);
 
-    // Operator overloads
+    // Operator overloading for duplicate check
     bool operator==(const Ticket& other) const;
 
     // Friend function for stream insertion operator overloading

@@ -4,15 +4,13 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Iinclude
 
-# Source files list
+# Source files list (excluding deleted CharterFlight and FirstClassPassenger files)
 SRCS = src/Flight.cpp \
        src/DomesticFlight.cpp \
        src/InternationalFlight.cpp \
-       src/CharterFlight.cpp \
        src/Passenger.cpp \
        src/EconomyPassenger.cpp \
        src/BusinessPassenger.cpp \
-       src/FirstClassPassenger.cpp \
        src/Ticket.cpp \
        src/Airline.cpp \
        src/UIHelper.cpp \

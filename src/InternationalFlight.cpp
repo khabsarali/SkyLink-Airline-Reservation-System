@@ -10,13 +10,13 @@ InternationalFlight::InternationalFlight(const std::string& flightNum, const std
     : Flight(flightNum, orig, dest, depTime, totSeats, availSeats),
       basePrice(price), intlTax(tax), fuelSurcharge(surcharge), requiresVisa(visaReq) {
     if (price < 0.0) {
-        throw InvalidInputException("Base price cannot be negative.");
+        throw AirlineException("Base price cannot be negative.");
     }
     if (tax < 0.0) {
-        throw InvalidInputException("International tax cannot be negative.");
+        throw AirlineException("International tax cannot be negative.");
     }
     if (surcharge < 0.0) {
-        throw InvalidInputException("Fuel surcharge cannot be negative.");
+        throw AirlineException("Fuel surcharge cannot be negative.");
     }
 }
 

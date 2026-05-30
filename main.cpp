@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <fstream>
 #include <algorithm>
-#include <iterator>
 #include <cctype>
 
 #ifdef _WIN32
@@ -17,10 +16,8 @@
 #include "Airline.h"
 #include "DomesticFlight.h"
 #include "InternationalFlight.h"
-#include "CharterFlight.h"
 #include "EconomyPassenger.h"
 #include "BusinessPassenger.h"
-#include "FirstClassPassenger.h"
 #include "SearchTemplate.h"
 #include "Exceptions.h"
 #include "UIHelper.h"
@@ -162,7 +159,7 @@ std::string getValidMonthYear(const std::string& prompt) {
 
 // Default baseline data
 void populateSampleData(Airline& airline) {
-    // Register 10 Flights
+    // Register 8 Flights (Domestic and International)
     airline.addFlight(std::make_shared<DomesticFlight>("DF-101", "Islamabad", "Karachi", "2026-05-30 08:00", 12, 12, 150.0, 20.00));
     airline.addFlight(std::make_shared<DomesticFlight>("DF-102", "Lahore", "Karachi", "2026-05-30 12:30", 15, 15, 120.0, 15.00));
     airline.addFlight(std::make_shared<DomesticFlight>("DF-103", "Islamabad", "Lahore", "2026-05-31 09:15", 18, 18, 90.0, 10.00));
@@ -173,10 +170,7 @@ void populateSampleData(Airline& airline) {
     airline.addFlight(std::make_shared<InternationalFlight>("IF-203", "Islamabad", "New York", "2026-05-30 10:30", 36, 36, 750.0, 90.00, 150.00, true));
     airline.addFlight(std::make_shared<InternationalFlight>("IF-204", "Karachi", "Istanbul", "2026-06-01 18:00", 45, 45, 400.0, 45.00, 80.00, true));
 
-    airline.addFlight(std::make_shared<CharterFlight>("CF-301", "Islamabad", "Baku", "2026-06-02 07:00", 6, 6, 1200.0, 4.0, 600.0));
-    airline.addFlight(std::make_shared<CharterFlight>("CF-302", "Lahore", "Tashkent", "2026-05-30 14:00", 9, 9, 1500.0, 3.5, 900.0));
-
-    // Register 8 Passengers
+    // Register 6 Passengers
     airline.registerPassenger(std::make_shared<EconomyPassenger>("P-1001", "John Doe", "john.doe@email.com"));
     airline.registerPassenger(std::make_shared<EconomyPassenger>("P-1002", "Jane Smith", "jane.smith@email.com"));
     airline.registerPassenger(std::make_shared<EconomyPassenger>("P-1003", "Bob Johnson", "bob.johnson@email.com"));
@@ -184,9 +178,6 @@ void populateSampleData(Airline& airline) {
     airline.registerPassenger(std::make_shared<BusinessPassenger>("P-2001", "Alice Brown", "alice.brown@email.com"));
     airline.registerPassenger(std::make_shared<BusinessPassenger>("P-2002", "Charlie Davis", "charlie.davis@email.com"));
     airline.registerPassenger(std::make_shared<BusinessPassenger>("P-2003", "Frank Miller", "frank.miller@email.com"));
-
-    airline.registerPassenger(std::make_shared<FirstClassPassenger>("P-3001", "David Wilson", "david.wilson@email.com"));
-    airline.registerPassenger(std::make_shared<FirstClassPassenger>("P-3002", "Emma Martinez", "emma.martinez@email.com"));
 }
 
 // Integration self-tests
@@ -196,38 +187,32 @@ void runSelfTests(Airline& airline) {
         // Test 1: Instantiation of different Flight classes
         auto df = std::make_shared<DomesticFlight>("TEST-DF", "ISB", "KHI", "2026-06-01 10:00", 9, 9, 200.0, 20.0);
         auto inf = std::make_shared<InternationalFlight>("TEST-IF", "ISB", "LHR", "2026-06-01 12:00", 12, 12, 500.0, 50.0, 100.0, true);
-        auto cf = std::make_shared<CharterFlight>("TEST-CF", "KHI", "DXB", "2026-06-02 14:00", 6, 6, 1000.0, 3.0, 600.0);
         
         if (df->calculateBaseFare() != 220.0) throw std::runtime_error("Domestic flight fare computation failed.");
         if (inf->calculateBaseFare() != 650.0) throw std::runtime_error("International flight fare computation failed.");
-        if (cf->calculateBaseFare() != 600.0) throw std::runtime_error("Charter flight fare computation failed.");
         std::cout << "[PASS] Test 1: Polymorphic pricing functions calculate fares correctly.\n";
 
         // Test 2: Passenger creation and polymorphism
         auto ep = std::make_shared<EconomyPassenger>("T-EP", "Test Eco", "eco@test.com");
         auto bp = std::make_shared<BusinessPassenger>("T-BP", "Test Biz", "biz@test.com");
-        auto fp = std::make_shared<FirstClassPassenger>("T-FP", "Test First", "first@test.com");
 
         if (ep->getBaggageAllowance() != 20.0 || ep->getCancellationRefundPercentage() != 50.0)
             throw std::runtime_error("Economy passenger rules mismatch.");
         if (bp->getBaggageAllowance() != 35.0 || bp->getCancellationRefundPercentage() != 75.0)
             throw std::runtime_error("Business passenger rules mismatch.");
-        if (fp->getBaggageAllowance() != 50.0 || fp->getCancellationRefundPercentage() != 90.0)
-            throw std::runtime_error("First class passenger rules mismatch.");
         std::cout << "[PASS] Test 2: Polymorphic passenger benefits, baggage, and cancellation rules match specifications.\n";
 
-        // Test 3: Generic iterator-based search template
-        std::vector<std::shared_ptr<Flight>> testFlights = {df, inf, cf};
-        std::vector<std::shared_ptr<Flight>> results;
-        searchItems(testFlights.begin(), testFlights.end(), std::back_inserter(results), [](const auto& f) {
+        // Test 3: Generic search template
+        std::vector<std::shared_ptr<Flight>> testFlights = {df, inf};
+        auto results = searchItems(testFlights, [](const auto& f) {
             return f->getDestination() == "LHR";
         });
         if (results.size() != 1 || results[0]->getFlightNumber() != "TEST-IF") {
             throw std::runtime_error("Generic search template failed to filter items.");
         }
-        std::cout << "[PASS] Test 3: Generic iterator-based search template filters collections correctly.\n";
+        std::cout << "[PASS] Test 3: Beginner-friendly search template filters collections correctly.\n";
 
-        // Test 4: Booking workflow, auto seat allocation, duplicate booking exceptions, history logging
+        // Test 4: Booking workflow, auto seat allocation, duplicate booking exceptions
         airline.addFlight(df);
         airline.registerPassenger(ep);
         
@@ -236,30 +221,31 @@ void runSelfTests(Airline& airline) {
             throw std::runtime_error("Seat allocation or available seats count mismatch.");
         }
 
-        // Verify booking history logging (weak_ptr link)
-        auto history = ep->getBookingHistory();
+        // Verify booking history lookup dynamically
+        std::vector<std::shared_ptr<Ticket>> history;
+        for (const auto& t : airline.getTickets()) {
+            if (t->getPassenger()->getPassengerId() == "T-EP") {
+                history.push_back(t);
+            }
+        }
         if (history.empty() || history[0]->getTicketId() != ticket->getTicketId()) {
-            throw std::runtime_error("Booking history weak_ptr tracking failed.");
+            throw std::runtime_error("Dynamic booking history tracking failed.");
         }
         
         try {
             airline.bookTicket("T-EP", "TEST-DF");
             throw std::runtime_error("Duplicate booking exception was not thrown.");
-        } catch (const DuplicateBookingException& e) {
+        } catch (const AirlineException& e) {
             // expected behavior
-        } catch (...) {
-            throw std::runtime_error("Wrong exception thrown for duplicate booking.");
         }
-        std::cout << "[PASS] Test 4: Ticket booking flow correctly processes reservations, seat mapping, and logs passenger history.\n";
+        std::cout << "[PASS] Test 4: Ticket booking flow correctly processes reservations, seat mapping, and checks duplicates.\n";
 
         // Test 5: Seat Selection validation
         try {
             airline.bookTicket("P-1001", "TEST-DF", 1); // seat 1 is already taken by T-EP
             throw std::runtime_error("Seat occupancy validation failed.");
-        } catch (const InvalidInputException& e) {
+        } catch (const AirlineException& e) {
             // expected behavior
-        } catch (...) {
-            throw std::runtime_error("Wrong exception thrown for occupied seat select.");
         }
         std::cout << "[PASS] Test 5: Seat occupancy validation rejects occupied seats successfully.\n";
 
@@ -290,12 +276,12 @@ int main(int argc, char* argv[]) {
     UIHelper::printWelcomeBanner();
     UIHelper::printLoadingScreen(500);
 
-    // Try loading existing data. Recover gracefully on missing or corrupted databases.
+    // Try loading existing data. Recover gracefully on missing database.
     try {
         if (fileExists(flightsFile) && fileExists(passengersFile) && fileExists(ticketsFile)) {
             airline.loadData(flightsFile, passengersFile, ticketsFile);
         } else {
-            throw DatabaseException("File Verification", "Save data files are incomplete or missing.");
+            throw AirlineException("Save data files are incomplete or missing.");
         }
     } catch (const std::exception& e) {
         UIHelper::printWarningMessage(std::string("Load warning: ") + e.what() + "\nGenerating default initialized configurations.");
@@ -395,10 +381,9 @@ int main(int argc, char* argv[]) {
 
                         UIHelper::printMenuBox("FLIGHT TYPE SELECTION", {
                             "1. Domestic Flight",
-                            "2. International Flight",
-                            "3. Charter Flight"
+                            "2. International Flight"
                         });
-                        int type = getValidInt("\nSelect flight type (1-3): ", 1, 3);
+                        int type = getValidInt("\nSelect flight type (1-2): ", 1, 2);
 
                         try {
                             if (type == 1) {
@@ -411,11 +396,6 @@ int main(int argc, char* argv[]) {
                                 double surcharge = getValidDouble("Enter Fuel Surcharge ($): ", 0.0);
                                 int visaVal = getValidInt("Requires VISA verification? (1=Yes, 0=No): ", 0, 1);
                                 airline.addFlight(std::make_shared<InternationalFlight>(fNo, orig, dest, depTime, seats, seats, base, tax, surcharge, visaVal == 1));
-                            } else if (type == 3) {
-                                double rate = getValidDouble("Enter Hourly Rate ($): ", 0.0);
-                                double hours = getValidDouble("Enter Projected Flight Hours: ", 0.1);
-                                double fee = getValidDouble("Enter Overhead Operations Fee ($): ", 0.0);
-                                airline.addFlight(std::make_shared<CharterFlight>(fNo, orig, dest, depTime, seats, seats, rate, hours, fee));
                             }
                             UIHelper::printSuccessMessage("Flight Route successfully authorized!");
                         } catch (const std::exception& e) {
@@ -458,18 +438,15 @@ int main(int argc, char* argv[]) {
 
                         UIHelper::printMenuBox("CLASS CATEGORY SELECTION", {
                             "1. Economy Class",
-                            "2. Business Class",
-                            "3. First Class"
+                            "2. Business Class"
                         });
-                        int category = getValidInt("\nSelect class type (1-3): ", 1, 3);
+                        int category = getValidInt("\nSelect class type (1-2): ", 1, 2);
 
                         try {
                             if (category == 1) {
                                 airline.registerPassenger(std::make_shared<EconomyPassenger>(id, name, email));
                             } else if (category == 2) {
                                 airline.registerPassenger(std::make_shared<BusinessPassenger>(id, name, email));
-                            } else if (category == 3) {
-                                airline.registerPassenger(std::make_shared<FirstClassPassenger>(id, name, email));
                             }
                             UIHelper::printSuccessMessage("Passenger profile established successfully!");
                         } catch (const std::exception& e) {
@@ -573,9 +550,8 @@ int main(int argc, char* argv[]) {
                                     UIHelper::printWelcomeBanner();
                                     std::string orig = getNonEmptyString("Enter Origin City/Airport: ");
                                     std::string dest = getNonEmptyString("Enter Destination City/Airport: ");
-                                    std::vector<std::shared_ptr<Flight>> matches;
                                     auto flights = airline.getFlights();
-                                    searchItems(flights.begin(), flights.end(), std::back_inserter(matches), [&](const auto& f) {
+                                    auto matches = searchItems(flights, [&](const auto& f) {
                                         return f->getOrigin() == orig && f->getDestination() == dest;
                                     });
                                     if (matches.empty()) {
@@ -598,9 +574,8 @@ int main(int argc, char* argv[]) {
                                     UIHelper::clearScreen();
                                     UIHelper::printWelcomeBanner();
                                     std::string date = getNonEmptyString("Enter Departure Date (YYYY-MM-DD): ");
-                                    std::vector<std::shared_ptr<Flight>> matches;
                                     auto flights = airline.getFlights();
-                                    searchItems(flights.begin(), flights.end(), std::back_inserter(matches), [&](const auto& f) {
+                                    auto matches = searchItems(flights, [&](const auto& f) {
                                         return f->getDepartureTime().find(date) != std::string::npos;
                                     });
                                     if (matches.empty()) {
@@ -698,7 +673,14 @@ int main(int argc, char* argv[]) {
                         std::cout << "\n" << UIHelper::BOLD << UIHelper::BLUE << "PASSENGER PROFILE:\n" << UIHelper::RESET;
                         std::cout << *passenger << "\n\n";
 
-                        auto history = passenger->getBookingHistory();
+                        // Retrieve history dynamically by searching confirmed/cancelled tickets matching passenger ID
+                        std::vector<std::shared_ptr<Ticket>> history;
+                        for (const auto& tkt : airline.getTickets()) {
+                            if (tkt->getPassenger()->getPassengerId() == pId) {
+                                history.push_back(tkt);
+                            }
+                        }
+
                         if (history.empty()) {
                             UIHelper::printWarningMessage("No flight reservation history logged for this passenger.");
                         } else {

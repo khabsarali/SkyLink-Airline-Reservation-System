@@ -1,0 +1,17 @@
+# Build binaries
+SkyLinkSystem
+SkyLinkSystem.exe
+*.exe
+*.o
+*.obj
+
+# Dynamic database saves
+data/flights.txt
+data/passengers.txt
+data/tickets.txt
+data/
+
+# IDE files
+.vscode/
+.idea/
+.gemini/

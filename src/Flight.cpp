@@ -8,19 +8,19 @@ Flight::Flight(const std::string& flightNum, const std::string& orig, const std:
     : flightNumber(flightNum), origin(orig), destination(dest),
       departureTime(depTime), totalSeats(totSeats), availableSeats(availSeats) {
     if (flightNum.empty()) {
-        throw InvalidInputException("Flight number cannot be empty.");
+        throw AirlineException("Flight number cannot be empty.");
     }
     if (orig.empty() || dest.empty()) {
-        throw InvalidInputException("Origin and destination cannot be empty.");
+        throw AirlineException("Origin and destination cannot be empty.");
     }
     if (orig == dest) {
-        throw InvalidInputException("Origin and destination cannot be the same (" + orig + ").");
+        throw AirlineException("Origin and destination cannot be the same (" + orig + ").");
     }
     if (totSeats <= 0) {
-        throw InvalidInputException("Total seats capacity must be positive.");
+        throw AirlineException("Total seats capacity must be positive.");
     }
     if (availSeats < 0 || availSeats > totSeats) {
-        throw InvalidInputException("Available seats must be between 0 and total seats capacity.");
+        throw AirlineException("Available seats must be between 0 and total seats capacity.");
     }
 }
 

@@ -1,12 +1,10 @@
 #include "Airline.h"
 #include "DomesticFlight.h"
 #include "InternationalFlight.h"
-#include "CharterFlight.h"
 #include "EconomyPassenger.h"
 #include "BusinessPassenger.h"
-#include "FirstClassPassenger.h"
 #include "Exceptions.h"
-#include "ConsoleHelper.h"
+#include "UIHelper.h"
 
 #include <iostream>
 #include <fstream>
@@ -66,8 +64,6 @@ std::shared_ptr<Flight> Airline::findFlight(const std::string& flightNo) const {
     }
     return nullptr;
 }
-
-#include "UIHelper.h"
 
 void Airline::listFlights() const {
     if (flights.empty()) {
@@ -131,12 +127,12 @@ void Airline::listPassengers() const {
 std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, const std::string& flightNo, int seatNo) {
     auto passenger = findPassenger(passengerId);
     if (!passenger) {
-        throw InvalidInputException("Booking Failed: Passenger ID " + passengerId + " not found.");
+        throw AirlineException("Booking Failed: Passenger ID " + passengerId + " not found.");
     }
 
     auto flight = findFlight(flightNo);
     if (!flight) {
-        throw InvalidInputException("Booking Failed: Flight " + flightNo + " not found.");
+        throw AirlineException("Booking Failed: Flight " + flightNo + " not found.");
     }
 
     // Rule 1: Reject duplicate booking (same passenger confirmed on same flight)
@@ -145,27 +141,27 @@ std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, cons
         return t->getBookingStatus() == "Confirmed" && *t == tempTicket;
     });
     if (dupIt != tickets.end()) {
-        throw DuplicateBookingException(passengerId, flightNo);
+        throw AirlineException("Booking Error: Passenger " + passengerId + " is already booked on Flight " + flightNo + "!");
     }
 
     // Rule 2: Reject if flight is full
     if (flight->getAvailableSeats() <= 0) {
-        throw FlightFullException(flightNo);
+        throw AirlineException("Booking Error: Flight " + flightNo + " is already full!");
     }
 
     // Rule 3: Seat selection and validation
     if (seatNo > 0) {
         if (seatNo > flight->getTotalSeats()) {
-            throw InvalidInputException("Booking Failed: Seat number " + std::to_string(seatNo) + 
-                                       " exceeds flight capacity of " + std::to_string(flight->getTotalSeats()) + ".");
+            throw AirlineException("Booking Failed: Seat number " + std::to_string(seatNo) + 
+                                   " exceeds flight capacity of " + std::to_string(flight->getTotalSeats()) + ".");
         }
         // Check if the requested seat is already booked
         for (const auto& t : tickets) {
             if (t->getFlight()->getFlightNumber() == flightNo && 
                 t->getSeatNumber() == seatNo && 
                 t->getBookingStatus() == "Confirmed") {
-                throw InvalidInputException("Booking Failed: Seat number " + std::to_string(seatNo) + 
-                                           " is already occupied on flight " + flightNo + ".");
+                throw AirlineException("Booking Failed: Seat number " + std::to_string(seatNo) + 
+                                       " is already occupied on flight " + flightNo + ".");
             }
         }
     } else {
@@ -187,7 +183,7 @@ std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, cons
             }
         }
         if (allocatedSeat == 0) {
-            throw FlightFullException(flightNo);
+            throw AirlineException("Booking Error: Flight " + flightNo + " is already full!");
         }
         seatNo = allocatedSeat;
     }
@@ -203,9 +199,6 @@ std::shared_ptr<Ticket> Airline::bookTicket(const std::string& passengerId, cons
     auto newTicket = std::make_shared<Ticket>(ticketId, passenger, flight, seatNo, finalFare, "Confirmed");
     tickets.push_back(newTicket);
 
-    // Track ticket in Passenger's history using weak_ptr
-    passenger->addTicketToHistory(newTicket);
-
     return newTicket;
 }
 
@@ -216,12 +209,12 @@ void Airline::cancelTicket(const std::string& ticketId) {
     });
 
     if (it == tickets.end()) {
-        throw InvalidCancellationException("Ticket ID " + ticketId + " not found.");
+        throw AirlineException("Cancellation Error: Ticket ID " + ticketId + " not found.");
     }
 
     auto ticket = *it;
     if (ticket->getBookingStatus() == "Cancelled") {
-        throw InvalidCancellationException("Ticket ID " + ticketId + " is already cancelled.");
+        throw AirlineException("Cancellation Error: Ticket ID " + ticketId + " is already cancelled.");
     }
 
     // Polymorphic refund calculation based on Passenger properties
@@ -257,16 +250,16 @@ std::shared_ptr<Ticket> Airline::findTicket(const std::string& ticketId) const {
 
 // Reports System
 void Airline::showTodayDepartures(const std::string& date) const {
-    std::cout << "\n" << Console::CYAN << "=== DEPARTURES FOR: " << Console::BOLD << date << Console::CYAN << " ===" << Console::RESET << "\n";
-    std::cout << Console::BOLD << Console::BLUE << std::left 
+    std::cout << "\n" << UIHelper::CYAN << "=== DEPARTURES FOR: " << UIHelper::BOLD << date << UIHelper::CYAN << " ===" << UIHelper::RESET << "\n";
+    std::cout << UIHelper::BOLD << UIHelper::BLUE << std::left 
               << std::setw(10) << "Flight No"
               << std::setw(15) << "Type"
               << std::setw(15) << "Origin"
               << std::setw(15) << "Destination"
               << std::setw(20) << "Departure Time"
               << std::setw(15) << "Seats (Avail/Tot)"
-              << "Base Fare" << Console::RESET << "\n";
-    std::cout << Console::BLUE << std::string(85, '-') << Console::RESET << "\n";
+              << "Base Fare" << UIHelper::RESET << "\n";
+    std::cout << UIHelper::BLUE << std::string(85, '-') << UIHelper::RESET << "\n";
     bool found = false;
     for (const auto& flight : flights) {
         if (flight->getDepartureTime().find(date) != std::string::npos) {
@@ -275,7 +268,7 @@ void Airline::showTodayDepartures(const std::string& date) const {
         }
     }
     if (!found) {
-        std::cout << Console::YELLOW << "No flights departing on this date." << Console::RESET << "\n";
+        std::cout << UIHelper::YELLOW << "No flights departing on this date." << UIHelper::RESET << "\n";
     }
 }
 
@@ -285,15 +278,15 @@ void Airline::showOccupancyPercentage() const {
         return;
     }
 
-    std::cout << "\n" << Console::BLUE << "=======================================================\n"
+    std::cout << "\n" << UIHelper::BLUE << "=======================================================\n"
               << "                  OCCUPANCY REPORT                     \n"
-              << "=======================================================\n" << Console::RESET;
-    std::cout << Console::BOLD << Console::BLUE << std::left 
+              << "=======================================================\n" << UIHelper::RESET;
+    std::cout << UIHelper::BOLD << UIHelper::BLUE << std::left 
               << std::setw(12) << "Flight No"
               << std::setw(15) << "Type"
               << std::setw(15) << "Occupied/Total"
-              << "Occupancy %\n" << Console::RESET;
-    std::cout << Console::BLUE << std::string(55, '-') << Console::RESET << "\n";
+              << "Occupancy %\n" << UIHelper::RESET;
+    std::cout << UIHelper::BLUE << std::string(55, '-') << UIHelper::RESET << "\n";
 
     double totalOccupied = 0;
     double totalCapacity = 0;
@@ -305,29 +298,29 @@ void Airline::showOccupancyPercentage() const {
         totalOccupied += occupied;
         totalCapacity += flight->getTotalSeats();
 
-        std::string color = Console::RESET;
+        std::string color = UIHelper::RESET;
         if (pct >= 90.0) {
-            color = Console::RED;
+            color = UIHelper::RED;
         } else if (pct >= 50.0) {
-            color = Console::GREEN;
+            color = UIHelper::GREEN;
         } else if (pct > 0.0) {
-            color = Console::YELLOW;
+            color = UIHelper::YELLOW;
         } else {
-            color = Console::DIM;
+            color = UIHelper::DIM;
         }
 
         std::cout << color << std::left
                   << std::setw(12) << flight->getFlightNumber()
                   << std::setw(15) << flight->getFlightType()
                   << std::setw(2) << occupied << "/" << std::setw(11) << flight->getTotalSeats()
-                  << std::fixed << std::setprecision(2) << pct << " %\n" << Console::RESET;
+                  << std::fixed << std::setprecision(2) << pct << " %\n" << UIHelper::RESET;
     }
 
     double overallPct = (totalCapacity > 0) ? (totalOccupied / totalCapacity) * 100.0 : 0.0;
-    std::cout << Console::BLUE << std::string(55, '-') << Console::RESET << "\n"
-              << "Overall Fleet Occupancy: " << Console::BOLD << Console::GREEN 
-              << std::fixed << std::setprecision(2) << overallPct << " %" << Console::RESET << "\n"
-              << Console::BLUE << "=======================================================\n" << Console::RESET;
+    std::cout << UIHelper::BLUE << std::string(55, '-') << UIHelper::RESET << "\n"
+              << "Overall Fleet Occupancy: " << UIHelper::BOLD << UIHelper::GREEN 
+              << std::fixed << std::setprecision(2) << overallPct << " %" << UIHelper::RESET << "\n"
+              << UIHelper::BLUE << "=======================================================\n" << UIHelper::RESET;
 }
 
 void Airline::showTopRevenueFlights() const {
@@ -364,15 +357,15 @@ void Airline::showTopRevenueFlights() const {
         return a.revenue > b.revenue;
     });
 
-    std::cout << "\n" << Console::MAGENTA << "=======================================================\n"
+    std::cout << "\n" << UIHelper::MAGENTA << "=======================================================\n"
               << "                 TOP REVENUE FLIGHTS                   \n"
-              << "=======================================================\n" << Console::RESET;
-    std::cout << Console::BOLD << Console::MAGENTA << std::left 
+              << "=======================================================\n" << UIHelper::RESET;
+    std::cout << UIHelper::BOLD << UIHelper::MAGENTA << std::left 
               << std::setw(15) << "Flight No"
               << std::setw(15) << "Type"
               << std::setw(15) << "Destination"
-              << "Revenue Generated\n" << Console::RESET;
-    std::cout << Console::MAGENTA << std::string(55, '-') << Console::RESET << "\n";
+              << "Revenue Generated\n" << UIHelper::RESET;
+    std::cout << UIHelper::MAGENTA << std::string(55, '-') << UIHelper::RESET << "\n";
 
     int limit = std::min(5, static_cast<int>(revenueList.size()));
     for (int i = 0; i < limit; ++i) {
@@ -381,9 +374,9 @@ void Airline::showTopRevenueFlights() const {
                   << std::setw(15) << item.flightPtr->getFlightNumber()
                   << std::setw(15) << item.flightPtr->getFlightType()
                   << std::setw(15) << item.flightPtr->getDestination()
-                  << Console::BOLD << Console::GREEN << "$" << std::fixed << std::setprecision(2) << item.revenue << Console::RESET << "\n";
+                  << UIHelper::BOLD << UIHelper::GREEN << "$" << std::fixed << std::setprecision(2) << item.revenue << UIHelper::RESET << "\n";
     }
-    std::cout << Console::MAGENTA << "=======================================================\n" << Console::RESET;
+    std::cout << UIHelper::MAGENTA << "=======================================================\n" << UIHelper::RESET;
 }
 
 // File Handling - saveData
@@ -391,7 +384,7 @@ void Airline::saveData(const std::string& flightsFile, const std::string& passen
     // 1. Save Flights
     std::ofstream outFlights(flightsFile);
     if (!outFlights.is_open()) {
-        throw DatabaseException("Saving Flights", "Could not open file: " + flightsFile);
+        throw AirlineException("Database Error: Could not open file for writing: " + flightsFile);
     }
     for (const auto& f : flights) {
         outFlights << f->getFlightType() << "|"
@@ -408,9 +401,6 @@ void Airline::saveData(const std::string& flightsFile, const std::string& passen
             auto inf = std::dynamic_pointer_cast<InternationalFlight>(f);
             outFlights << inf->getBasePrice() << "|" << inf->getIntlTax() << "|"
                        << inf->getFuelSurcharge() << "|" << (inf->getRequiresVisa() ? "1" : "0");
-        } else if (f->getFlightType() == "Charter") {
-            auto cf = std::dynamic_pointer_cast<CharterFlight>(f);
-            outFlights << cf->getHourlyRate() << "|" << cf->getFlightHours() << "|" << cf->getOverheadFee();
         }
         outFlights << "\n";
     }
@@ -419,7 +409,7 @@ void Airline::saveData(const std::string& flightsFile, const std::string& passen
     // 2. Save Passengers
     std::ofstream outPassengers(passengersFile);
     if (!outPassengers.is_open()) {
-        throw DatabaseException("Saving Passengers", "Could not open file: " + passengersFile);
+        throw AirlineException("Database Error: Could not open file for writing: " + passengersFile);
     }
     for (const auto& p : passengers) {
         outPassengers << p->getPassengerType() << "|"
@@ -432,7 +422,7 @@ void Airline::saveData(const std::string& flightsFile, const std::string& passen
     // 3. Save Tickets
     std::ofstream outTickets(ticketsFile);
     if (!outTickets.is_open()) {
-        throw DatabaseException("Saving Tickets", "Could not open file: " + ticketsFile);
+        throw AirlineException("Database Error: Could not open file for writing: " + ticketsFile);
     }
     for (const auto& t : tickets) {
         outTickets << t->getTicketId() << "|"
@@ -455,7 +445,7 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
     // 1. Load Flights
     std::ifstream inFlights(flightsFile);
     if (!inFlights.is_open()) {
-        throw DatabaseException("Loading Flights", "Could not open file: " + flightsFile);
+        throw AirlineException("Database Error: Could not open file for reading: " + flightsFile);
     }
     std::string line;
     while (std::getline(inFlights, line)) {
@@ -483,12 +473,6 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
             bool visa = (tokens[10] == "1");
             auto inf = std::make_shared<InternationalFlight>(fNo, orig, dest, depTime, totSeats, availSeats, basePrice, tax, surcharge, visa);
             flights.push_back(inf);
-        } else if (type == "Charter" && tokens.size() >= 10) {
-            double rate = std::stod(tokens[7]);
-            double hours = std::stod(tokens[8]);
-            double fee = std::stod(tokens[9]);
-            auto cf = std::make_shared<CharterFlight>(fNo, orig, dest, depTime, totSeats, availSeats, rate, hours, fee);
-            flights.push_back(cf);
         }
     }
     inFlights.close();
@@ -496,7 +480,7 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
     // 2. Load Passengers
     std::ifstream inPassengers(passengersFile);
     if (!inPassengers.is_open()) {
-        throw DatabaseException("Loading Passengers", "Could not open file: " + passengersFile);
+        throw AirlineException("Database Error: Could not open file for reading: " + passengersFile);
     }
     while (std::getline(inPassengers, line)) {
         if (line.empty()) continue;
@@ -512,8 +496,6 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
             passengers.push_back(std::make_shared<EconomyPassenger>(id, name, email));
         } else if (type == "Business") {
             passengers.push_back(std::make_shared<BusinessPassenger>(id, name, email));
-        } else if (type == "FirstClass") {
-            passengers.push_back(std::make_shared<FirstClassPassenger>(id, name, email));
         }
     }
     inPassengers.close();
@@ -521,7 +503,7 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
     // 3. Load Tickets
     std::ifstream inTickets(ticketsFile);
     if (!inTickets.is_open()) {
-        throw DatabaseException("Loading Tickets", "Could not open file: " + ticketsFile);
+        throw AirlineException("Database Error: Could not open file for reading: " + ticketsFile);
     }
     while (std::getline(inTickets, line)) {
         if (line.empty()) continue;
@@ -541,7 +523,6 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
         if (passenger && flight) {
             auto ticket = std::make_shared<Ticket>(ticketId, passenger, flight, seatNo, fare, status);
             tickets.push_back(ticket);
-            passenger->addTicketToHistory(ticket);
         }
     }
     inTickets.close();
@@ -550,7 +531,7 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
 void Airline::showSeatMap(const std::string& flightNo) const {
     auto flight = findFlight(flightNo);
     if (!flight) {
-        throw InvalidInputException("Flight " + flightNo + " not found.");
+        throw AirlineException("Flight " + flightNo + " not found.");
     }
     int totalSeats = flight->getTotalSeats();
     
@@ -640,9 +621,9 @@ void Airline::showMonthlyRevenueReport(const std::string& monthYear) const {
     });
 
     std::cout << "\n" << UIHelper::BOLD << UIHelper::MAGENTA
-              << "=======================================================\n"
-              << "          MONTHLY REVENUE REPORT: " << monthYear << "\n"
-              << "=======================================================\n" << UIHelper::RESET;
+               << "=======================================================\n"
+               << "          MONTHLY REVENUE REPORT: " << monthYear << "\n"
+               << "=======================================================\n" << UIHelper::RESET;
     std::cout << UIHelper::BOLD << UIHelper::MAGENTA << std::left
               << std::setw(12) << "Flight No"
               << std::setw(15) << "Type"
@@ -663,4 +644,3 @@ void Airline::showMonthlyRevenueReport(const std::string& monthYear) const {
               << "Total Monthly Revenue: " << UIHelper::BOLD << UIHelper::GREEN << "$" << totalMonthlyRevenue << UIHelper::RESET << "\n"
               << UIHelper::MAGENTA << "=======================================================\n" << UIHelper::RESET;
 }
-

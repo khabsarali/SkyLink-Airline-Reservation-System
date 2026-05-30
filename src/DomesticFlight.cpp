@@ -10,10 +10,10 @@ DomesticFlight::DomesticFlight(const std::string& flightNum, const std::string& 
     : Flight(flightNum, orig, dest, depTime, totSeats, availSeats),
       basePrice(price), domesticTax(tax) {
     if (price < 0.0) {
-        throw InvalidInputException("Base price cannot be negative.");
+        throw AirlineException("Base price cannot be negative.");
     }
     if (tax < 0.0) {
-        throw InvalidInputException("Domestic tax surcharge cannot be negative.");
+        throw AirlineException("Domestic tax surcharge cannot be negative.");
     }
 }
 

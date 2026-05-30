@@ -1,7 +1,7 @@
 # SkyLink Airline Reservation & Flight Management System
 ## 🎓 Comprehensive Viva Preparation & Architectural Blueprint
 
-This guide serves as an in-depth viva-ready preparation sheet, detailing every Object-Oriented Programming (OOP) construct, architectural decision, design pattern, and C++17 component utilized in the SkyLink framework.
+This guide serves as an in-depth viva-ready preparation sheet, detailing every Object-Oriented Programming (OOP) construct, architectural decision, and simplified C++17 component utilized in the SkyLink framework.
 
 ---
 
@@ -18,13 +18,13 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 * **In SkyLink**:
   - All variables in `Flight`, `Passenger`, and `Ticket` are declared `private` or `protected`.
   - Properties like `availableSeats` in a flight cannot be randomly decremented or set to illegal states by other components; they must go through the public member functions `bookSeat()` and `releaseSeat()`, which strictly validate capacity constraints.
-  - Constructor parameters are validated immediately. If a base price is negative or an email is blank, the constructor throws an `InvalidInputException` preventing the instantiation of malformed objects.
+  - Constructor parameters are validated immediately. If a base price is negative or a name is blank, the constructor throws an `AirlineException` preventing the instantiation of malformed objects.
 
 ### 3. Inheritance
 * **Theory**: Establishing an "is-a" relationship between a base class (parent) and a derived class (child), allowing the derived class to inherit common attributes and behaviors while implementing its specific properties, promoting code reusability.
 * **In SkyLink**:
-  - `Flight` acts as a parent for `DomesticFlight`, `InternationalFlight`, and `CharterFlight`.
-  - `Passenger` acts as a parent for `EconomyPassenger`, `BusinessPassenger`, and `FirstClassPassenger`.
+  - `Flight` acts as a parent for `DomesticFlight` and `InternationalFlight`.
+  - `Passenger` acts as a parent for `EconomyPassenger` and `BusinessPassenger`.
   - This structure avoids code duplication. Common attributes (like `name`, `passengerId`, `email` in a passenger) are declared once in `Passenger` and inherited by all subclasses.
 
 ### 4. Runtime Polymorphism (Dynamic Binding)
@@ -32,7 +32,7 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 * **In SkyLink**:
   - Pointers of type `std::shared_ptr<Flight>` are stored in `std::vector<std::shared_ptr<Flight>>`.
   - When `flight->calculateBaseFare()` is invoked, the C++ runtime resolves the virtual call using the Vtable, calling `DomesticFlight::calculateBaseFare()` if it points to a domestic flight, or `InternationalFlight::calculateBaseFare()` for international ones.
-  - **Virtual Destructors**: The virtual destructor `virtual ~Flight() = default;` is crucial. It ensures that when a base pointer `std::shared_ptr<Flight>` is deleted, the destructor of the derived class (e.g., `InternationalFlight`) is also called, preventing resource leaks.
+  - **Virtual Destructors**: The virtual destructor `virtual ~Flight() = default;` is crucial. It ensures that when a base pointer `std::shared_ptr<Flight>` is deleted, the destructor of the derived class is also called, preventing resource leaks.
 
 ---
 
@@ -42,41 +42,33 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 * **Flight**: Abstract base class defining general flight state (`flightNumber`, `origin`, `destination`, etc.).
 * **DomesticFlight**: Inherits `Flight`. Adds domestic tax calculations.
 * **InternationalFlight**: Inherits `Flight`. Adds international fuel surcharges, custom taxes, and visa requirement flags.
-* **CharterFlight**: Inherits `Flight`. Features corporate chartered hourly rate models.
 * *Why Inheritance?* Common states (flight number, route, capacity) are defined once in the base `Flight` class, making adding new flight categories trivial.
-* *Why Virtual Functions?* Dynamic pricing logic requires that each flight compute its fare polymorphically at runtime during tickets booking.
+* *Why Virtual Functions?* Dynamic pricing logic requires that each flight compute its fare polymorphically at runtime during ticket booking.
 
 ### 2. Passenger Sub-system Hierarchy
 * **Passenger**: Abstract base class defining common traveler state (`passengerId`, `name`, `email`).
 * **EconomyPassenger**: Inherits `Passenger`. Sets 20kg baggage limit, 1.0x loyalty discount, and 50% refund policy.
 * **BusinessPassenger**: Inherits `Passenger`. Sets 35kg baggage limit, 1.5x loyalty discount, and 75% refund policy.
-* **FirstClassPassenger**: Inherits `Passenger`. Sets 50kg baggage limit, 2.0x loyalty discount, and 90% refund policy.
 * *Why Inheritance?* Allows storing any traveler type in a generic passenger collection while keeping class-specific baggage and cancellation refund rates encapsulated.
 * *Why Virtual Functions?* Ensures cancellation refund percentages (`getCancellationRefundPercentage()`) are computed dynamically at runtime depending on the passenger's class type.
 
-### 3. Ticket & The Rule of Five
+### 3. Ticket & The Rule of Zero
 * **Ticket**: Links a `Passenger` to a `Flight`. Encapsulates the seat allocated, the fare paid, and active status.
-* **Rule of Five**: Since `Ticket` owns dependencies, we explicitly define:
-  1. Destructor
-  2. Copy Constructor
-  3. Copy Assignment Operator
-  4. Move Constructor
-  5. Move Assignment Operator
-  This demonstrates correct memory management and transfer of ownership values in standard modern C++.
+* **Rule of Zero**: In modern C++, classes that only own standard library or smart pointer attributes should let the compiler auto-generate safe constructors, destructors, copy, and move operations. This is a premium industry standard that ensures memory safety without over-engineered boilerplate.
 * **Friend Operators / Operator Overloading**:
   - `operator==` is overloaded to check if a passenger is already booked on the same flight, enforcing duplicate booking rejection.
   - `operator<<` is overloaded as a `friend` function in `Ticket`, `Flight`, and `Passenger` to support clean stream insertion. In `Flight` and `Passenger`, we implement virtual `print` functions called from inside the friend `operator<<`, representing a **polymorphic stream insertion pattern**.
 
 ### 4. Airline (Controller Class)
-* Aggregates collections of `Flight`, `Passenger`, and `Ticket` objects using STL containers. Provides API for booking, cancellation, file serialization (saving/loading), and live business analytics.
+* Aggregates collections of `Flight`, `Passenger`, and `Ticket` objects using STL vectors. Provides API for booking, cancellation, seat map visualization, file serialization (saving/loading), and live business analytics.
 
 ---
 
 ## 🛠️ Part 3: Memory Safety, Templates, Exceptions, and Files
 
-### 1. Smart Pointer Memory Safety & Reference Loops
+### 1. Smart Pointer Memory Safety
 * We use `std::shared_ptr` to manage shared ownership of flights, passengers, and tickets.
-* **Breaking Circular References**: If `Passenger` stored a list of `std::shared_ptr<Ticket>` and `Ticket` stored a `std::shared_ptr<Passenger>`, a reference cycle would occur. Neither object would ever be deleted, creating memory leaks. We resolve this by declaring `std::vector<std::weak_ptr<Ticket>> bookingHistory;` inside `Passenger.h`. The passenger holds a weak reference to the ticket, breaking the circular link.
+* **Avoiding Circular References**: By looking up passenger travel history dynamically in `Airline` (scanning tickets matching the passenger ID), we completely eliminate reference cycle complexities (e.g. `Passenger` holding a `shared_ptr` to `Ticket` and vice-versa), ensuring flawless memory safety.
 
 ### 2. STL (Standard Template Library) & Templates
 * **Containers**:
@@ -85,21 +77,21 @@ This guide serves as an in-depth viva-ready preparation sheet, detailing every O
 * **Algorithms**:
   - `std::find_if`: Used to search lists using custom lambda predicates (e.g., finding flights by ID).
   - `std::sort`: Used to sort flight revenues in descending order for monthly revenue reports.
-* **Generic Template Search Utility**:
-  - In `SearchTemplate.h`, we define an iterator-based generic template search utility:
+* **Generic Template Search Function**:
+  - In `SearchTemplate.h`, we define a simple, highly clean template function:
     ```cpp
-    template <typename InputIt, typename OutputIt, typename Predicate>
-    OutputIt searchItems(InputIt first, InputIt last, OutputIt d_first, Predicate pred);
+    template <typename T, typename Predicate>
+    std::vector<std::shared_ptr<T>> searchItems(const std::vector<std::shared_ptr<T>>& items, Predicate pred);
     ```
-    This utility leverages standard library iterators and `std::copy_if` under the hood, enabling reuse across flights, passengers, or tickets.
+    This utility leverages C++ templates, enabling reuse across flights, passengers, or tickets with simple lambdas.
 
 ### 3. Custom Exceptions
-* Custom exceptions (`FlightFullException`, `DuplicateBookingException`, `InvalidCancellationException`, `InvalidInputException`, `DatabaseException`) inherit from `std::exception`. They provide specific exception handling, allowing the UI to catch them and show warning dialogs instead of crashing.
+* Satisfying the university OOP exception handling requirements, we implement a single, unified custom exception class `AirlineException` (derived from `std::exception`). This is easy to defend in a viva and handles all flight-full, duplicate bookings, database failures, and validation errors.
 
 ### 4. File Handling & Serialization
 * Data is stored in plaintext files (`flights.txt`, `passengers.txt`, `tickets.txt`) inside `data/`.
 * When saving, the polymorphic types are downcast using `std::dynamic_pointer_cast` to retrieve derived-specific fields.
-* When loading, the type prefix token (e.g. `Domestic`) is parsed to construct the appropriate subclass. In the event of missing or corrupted save files, the database triggers default initialization and rebuilds sample records.
+* When loading, the type prefix token (e.g. `Domestic`) is parsed to construct the appropriate subclass.
 
 ---
 
@@ -160,30 +152,14 @@ classDiagram
         + getRequiresVisa() bool
     }
 
-    class CharterFlight {
-        - double hourlyRate
-        - double flightHours
-        - double overheadFee
-        + CharterFlight(string, string, string, string, int, int, double, double, double)
-        + calculateBaseFare() double
-        + displayDetails() void
-        + getFlightType() string
-        + print(ostream&) void
-        + getHourlyRate() double
-        + getFlightHours() double
-        + getOverheadFee() double
-    }
-
     Flight <|-- DomesticFlight
     Flight <|-- InternationalFlight
-    Flight <|-- CharterFlight
 
     class Passenger {
         <<Abstract>>
         # string passengerId
         # string name
         # string email
-        # vector<weak_ptr<Ticket>> bookingHistory
         + Passenger(string, string, string)
         + ~Passenger()*
         + getPassengerId() string
@@ -193,8 +169,6 @@ classDiagram
         + getLoyaltyMultiplier() double*
         + getCancellationRefundPercentage() double*
         + getPassengerType() string*
-        + addTicketToHistory(shared_ptr<Ticket>) void
-        + getBookingHistory() vector<shared_ptr<Ticket>>
         + displayDetails() void*
         + print(ostream&) void
     }
@@ -217,18 +191,8 @@ classDiagram
         + print(ostream&) void
     }
 
-    class FirstClassPassenger {
-        + FirstClassPassenger(string, string, string)
-        + getBaggageAllowance() double
-        + getLoyaltyMultiplier() double
-        + getCancellationRefundPercentage() double
-        + getPassengerType() string
-        + print(ostream&) void
-    }
-
     Passenger <|-- EconomyPassenger
     Passenger <|-- BusinessPassenger
-    Passenger <|-- FirstClassPassenger
 
     class Ticket {
         - string ticketId
@@ -238,11 +202,6 @@ classDiagram
         - double farePaid
         - string bookingStatus
         + Ticket(string, shared_ptr<Passenger>, shared_ptr<Flight>, int, double, string)
-        + ~Ticket()
-        + Ticket(const Ticket&)
-        + operator=(const Ticket&) Ticket&
-        + Ticket(Ticket&&)
-        + operator=(Ticket&&) Ticket&
         + getTicketId() string
         + getPassenger() shared_ptr<Passenger>
         + getFlight() shared_ptr<Flight>
@@ -284,7 +243,6 @@ classDiagram
     Airline "1" *-- "many" Ticket : aggregates
     Ticket "many" o-- "1" Flight : references
     Ticket "many" o-- "1" Passenger : references
-    Passenger "1" o-- "many" Ticket : history (weak references)
 ```
 
 ---
@@ -304,7 +262,7 @@ classDiagram
 > **Answer**: A raw pointer (`T*`) requires manual memory management (`new` and `delete`), which is prone to memory leaks and dangling pointers. `std::shared_ptr<T>` is a smart pointer that implements reference counting. It automatically deletes the managed object when the last `std::shared_ptr` pointing to it goes out of scope.
 
 #### Q5: How did you implement duplicate booking prevention?
-> **Answer**: I overloaded the `operator==` in the `Ticket` class. When a booking request is made, `Airline::bookTicket` constructs a temporary ticket and uses the `std::find_if` algorithm to scan the tickets collection. If a match is found, the system throws a `DuplicateBookingException`.
+> **Answer**: I overloaded the `operator==` in the `Ticket` class. When a booking request is made, `Airline::bookTicket` constructs a temporary ticket and scans the tickets collection. If a match is found (same passenger on same flight), the system throws an `AirlineException`.
 
 #### Q6: What is the VTable and VPtr? How is polymorphism resolved?
 > **Answer**: Every class with virtual functions has a Virtual Table (VTable), which is a static array of function pointers. Every object of that class contains a hidden pointer called `vptr` pointing to the VTable. When a virtual function is called at runtime, the compiler follows `vptr` to resolve the function address dynamically.
@@ -321,8 +279,8 @@ classDiagram
 #### Q10: Why is `std::vector` preferred over standard arrays?
 > **Answer**: Vector is a dynamic container that handles resizing automatically, manages memory under the hood, provides bounds checking via `at()`, and keeps elements contiguous in memory, ensuring CPU cache friendliness and fast access.
 
-#### Q11: Explain how the generic search template works.
-> **Answer**: The generic `searchItems` template takes standard STL input and output iterators along with a unary predicate. It utilizes `std::copy_if` to copy matching objects to the target container. This allows it to search flights, passengers, or tickets generically.
+#### Q11: Explain how the generic search template works in your system.
+> **Answer**: The generic `searchItems` template takes a `std::vector<std::shared_ptr<T>>` along with a unary predicate function or lambda. It iterates through the vector and returns a new vector containing pointers that satisfy the predicate. This is a very clean and modern C++17 design.
 
 #### Q12: How are files parsed during data loading?
 > **Answer**: We read files line by line using `std::getline` and split them using a delimiter (`|`). The first token determines the type (e.g. `Economy`). Based on this type token, we call the appropriate constructor to instantiate the correct derived object.
@@ -336,5 +294,5 @@ classDiagram
 #### Q15: What is the advantage of utilizing `std::make_shared` over `new`?
 > **Answer**: `std::make_shared` performs a single memory allocation for both the control block (reference count) and the managed object, whereas `new` requires two separate allocations. It is faster and improves memory locality.
 
-#### Q16: What is a reference cycle and how is it broken in your code?
-> **Answer**: A reference cycle occurs when two objects reference each other using `std::shared_ptr` (e.g., Passenger points to Ticket, and Ticket points to Passenger). Because the reference count never drops to zero, the objects are never deleted. We break this cycle by having the Passenger class store tickets in a `std::vector<std::weak_ptr<Ticket>>`.
+#### Q16: What is the "Rule of Zero" and how does it apply to your system?
+> **Answer**: The Rule of Zero states that classes that do not manage manual raw resources should not define custom destructors, copy/move constructors, or copy/move assignment operators. Since the `Ticket` class uses modern types (`std::string`, `std::shared_ptr`), we let the compiler auto-generate these functions, reducing boilerplate code and preventing bugs.

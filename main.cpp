@@ -378,7 +378,7 @@ switch (choice) {
     }
     case 3: { // Search Flights (reuse existing search & filter functionality)
         // invoke the same block as original case 8
-        int prevChoice = choice; // placeholder to avoid unused warning
+        
         // Reuse search menu loop
         while (true) {
             UIHelper::clearScreen();
@@ -401,7 +401,7 @@ switch (choice) {
                     auto it = std::find_if(flights.begin(), flights.end(), [&](const auto& f){ return f->getFlightNumber() == num; });
                     if (it != flights.end()) {
                         std::cout << "\n" << UIHelper::BOLD << UIHelper::GREEN << "FLIGHT FOUND:\n" << UIHelper::RESET;
-                        std::cout << **it << "\n";
+                        std::cout << *it << "\n";
                     } else {
                         UIHelper::printWarningMessage("No flight with code '" + num + "' was found.");
                     }

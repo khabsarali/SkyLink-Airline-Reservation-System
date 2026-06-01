@@ -96,7 +96,7 @@ void UIHelper::printFooter() {
     int width = 70;
     std::cout << BOLD << BLUE;
     printHorizontalLine(width, '=');
-    printCenteredText("Designed by Google DeepMind - Antigravity AI Subsystem", width, DIM);
+    printCenteredText("Designed by SkyLink Development Team", width, DIM);
     printCenteredText("Viva Exam Mode: Fully OOP & C++17 Compliant", width, YELLOW);
     printHorizontalLine(width, '=');
     std::cout << RESET << "\n";

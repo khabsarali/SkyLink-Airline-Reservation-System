@@ -2,7 +2,7 @@
 # Configured for g++ C++17 compilation on Windows and general environments
 
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude -static
 
 # Source files list (excluding deleted CharterFlight and FirstClassPassenger files)
 SRCS = src/Flight.cpp \

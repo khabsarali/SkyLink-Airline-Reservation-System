@@ -6,3 +6,6 @@ International|IF-201|New York|London|2026-05-30 20:00|250|250|450|65|120|1
 International|IF-202|Los Angeles|Tokyo|2026-05-31 13:00|300|300|650|85|180|1
 International|IF-203|Chicago|Toronto|2026-05-30 10:30|150|150|180|25|40|0
 International|IF-204|Miami|Paris|2026-06-01 18:00|200|200|500|75|150|1
+Domestic|AB-109|mzd|isb|2026-09-09 12:00|3|3|50|10
+Charter|CF-301|Islamabad|Skardu|2026-06-02 07:00|6|5|250|2|300
+Charter|CF-302|Karachi|Gwadar|2026-06-03 11:00|8|8|200|3|400

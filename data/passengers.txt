@@ -4,3 +4,4 @@ Economy|P-1003|Bob Johnson|bob.johnson@email.com
 Business|P-2001|Alice Brown|alice.brown@email.com
 Business|P-2002|Charlie Davis|charlie.davis@email.com
 Business|P-2003|Frank Miller|frank.miller@email.com
+Economy|A-109|absar|absa@12

@@ -1,6 +1,7 @@
 #include "Airline.h"
 #include "DomesticFlight.h"
 #include "InternationalFlight.h"
+#include "CharterFlight.h"
 #include "EconomyPassenger.h"
 #include "BusinessPassenger.h"
 #include "Exceptions.h"
@@ -401,6 +402,11 @@ void Airline::saveData(const std::string& flightsFile, const std::string& passen
             auto inf = std::dynamic_pointer_cast<InternationalFlight>(f);
             outFlights << inf->getBasePrice() << "|" << inf->getIntlTax() << "|"
                        << inf->getFuelSurcharge() << "|" << (inf->getRequiresVisa() ? "1" : "0");
+        } else if (f->getFlightType() == "Charter") {
+            auto cf = std::dynamic_pointer_cast<CharterFlight>(f);
+            if (cf) {
+                outFlights << cf->getHourlyRate() << "|" << cf->getFlightHours() << "|" << cf->getOverheadFee();
+            }
         }
         outFlights << "\n";
     }
@@ -473,6 +479,12 @@ void Airline::loadData(const std::string& flightsFile, const std::string& passen
             bool visa = (tokens[10] == "1");
             auto inf = std::make_shared<InternationalFlight>(fNo, orig, dest, depTime, totSeats, availSeats, basePrice, tax, surcharge, visa);
             flights.push_back(inf);
+        } else if (type == "Charter" && tokens.size() >= 10) {
+            double rate = std::stod(tokens[7]);
+            double hours = std::stod(tokens[8]);
+            double fee = std::stod(tokens[9]);
+            auto cf = std::make_shared<CharterFlight>(fNo, orig, dest, depTime, totSeats, availSeats, rate, hours, fee);
+            flights.push_back(cf);
         }
     }
     inFlights.close();

@@ -2,12 +2,13 @@
 # Configured for g++ C++17 compilation on Windows and general environments
 
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude -static
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
 
-# Source files list (excluding deleted CharterFlight and FirstClassPassenger files)
+# Source files list
 SRCS = src/Flight.cpp \
        src/DomesticFlight.cpp \
        src/InternationalFlight.cpp \
+       src/CharterFlight.cpp \
        src/Passenger.cpp \
        src/EconomyPassenger.cpp \
        src/BusinessPassenger.cpp \
@@ -17,7 +18,7 @@ SRCS = src/Flight.cpp \
        main.cpp
 
 # Target executable name
-TARGET = SkyLinkSystem
+TARGET = SkyLinkSystem.exe
 
 all: $(TARGET)
 

@@ -16,6 +16,7 @@
 #include "Airline.h"
 #include "DomesticFlight.h"
 #include "InternationalFlight.h"
+#include "CharterFlight.h"
 #include "EconomyPassenger.h"
 #include "BusinessPassenger.h"
 #include "SearchTemplate.h"
@@ -170,6 +171,10 @@ void populateSampleData(Airline& airline) {
     airline.addFlight(std::make_shared<InternationalFlight>("IF-203", "Islamabad", "New York", "2026-05-30 10:30", 36, 36, 750.0, 90.00, 150.00, true));
     airline.addFlight(std::make_shared<InternationalFlight>("IF-204", "Karachi", "Istanbul", "2026-06-01 18:00", 45, 45, 400.0, 45.00, 80.00, true));
 
+    // Register 2 Chartered Flights
+    airline.addFlight(std::make_shared<CharterFlight>("CF-301", "Islamabad", "Skardu", "2026-06-02 07:00", 6, 6, 250.0, 2.0, 300.0));
+    airline.addFlight(std::make_shared<CharterFlight>("CF-302", "Karachi", "Gwadar", "2026-06-03 11:00", 8, 8, 200.0, 3.0, 400.0));
+
     // Register 6 Passengers
     airline.registerPassenger(std::make_shared<EconomyPassenger>("P-1001", "John Doe", "john.doe@email.com"));
     airline.registerPassenger(std::make_shared<EconomyPassenger>("P-1002", "Jane Smith", "jane.smith@email.com"));
@@ -256,7 +261,19 @@ void runSelfTests(Airline& airline) {
         }
         std::cout << "[PASS] Test 6: Cancellation refund system updates available seats and computes refund amounts correctly.\n";
 
-        std::cout << "\nALL 6 SYSTEM TESTS PASSED SUCCESSFULLY! The Airline reservation framework is robust and safe.\n";
+        // Test 7: Chartered Flight creation and Economy passenger booking flow
+        auto cf = std::make_shared<CharterFlight>("TEST-CF", "ISB", "KDU", "2026-06-02 08:00", 6, 6, 200.0, 3.0, 300.0);
+        if (cf->calculateBaseFare() != 150.0) {
+            throw std::runtime_error("Charter flight fare computation failed: expected 150.0.");
+        }
+        airline.addFlight(cf);
+        auto cfTicket = airline.bookTicket("T-EP", "TEST-CF");
+        if (cfTicket->getFarePaid() != 150.0 || cf->getAvailableSeats() != 5) {
+            throw std::runtime_error("Economy Passenger booking on Chartered Flight failed.");
+        }
+        std::cout << "[PASS] Test 7: Economy Passenger can successfully book Chartered Flights with accurate polymorphic fare and seat allocation.\n";
+
+        std::cout << "\nALL 7 SYSTEM TESTS PASSED SUCCESSFULLY! The Airline reservation framework is robust and safe.\n";
     } catch (const std::exception& e) {
         std::cerr << "\n[FAIL] Integration Test failed: " << e.what() << "\n";
         std::exit(1);
@@ -341,30 +358,30 @@ switch (choice) {
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
         std::cout << "--- REGISTER NEW FLIGHT ROUTE ---\n";
-        std::string fNo = getNonEmptyString("Enter Flight Number (e.g. AA-404) [or '0' to cancel]: ");
-        if (fNo == "0") {
-            UIHelper::printWarningMessage("Registration cancelled. Returning to main menu.");
-            waitForEnter();
-            break;
-        }
+        std::string fNo = getNonEmptyString("Enter Flight Number (e.g. AA-404): ");
         if (airline.findFlight(fNo)) { UIHelper::printErrorMessage("Register failed: Flight number already exists."); waitForEnter(); break; }
         std::string orig = getNonEmptyString("Enter Origin City: ");
         std::string dest = getNonEmptyString("Enter Destination City: ");
         std::string depTime = getValidDateTime("Enter Departure (YYYY-MM-DD HH:MM): ");
         int seats = getValidInt("Enter Seat Capacity (3-abreast multiple recommended, e.g. 15, 30): ", 3, 500);
-        UIHelper::printMenuBox("FLIGHT TYPE SELECTION", {"1. Domestic Flight", "2. International Flight"});
-        int type = getValidInt("\nSelect flight type (1-2): ", 1, 2);
+        UIHelper::printMenuBox("FLIGHT TYPE SELECTION", {"1. Domestic Flight", "2. International Flight", "3. Chartered Flight"});
+        int type = getValidInt("\nSelect flight type (1-3): ", 1, 3);
         try {
             if (type == 1) {
                 double base = getValidDouble("Enter Base Price ($): ", 0.0);
                 double tax = getValidDouble("Enter Domestic Tax ($): ", 0.0);
                 airline.addFlight(std::make_shared<DomesticFlight>(fNo, orig, dest, depTime, seats, seats, base, tax));
-            } else {
+            } else if (type == 2) {
                 double base = getValidDouble("Enter Base Price ($): ", 0.0);
                 double tax = getValidDouble("Enter International Tax ($): ", 0.0);
                 double surcharge = getValidDouble("Enter Fuel Surcharge ($): ", 0.0);
                 int visaVal = getValidInt("Requires VISA verification? (1=Yes, 0=No): ", 0, 1);
                 airline.addFlight(std::make_shared<InternationalFlight>(fNo, orig, dest, depTime, seats, seats, base, tax, surcharge, visaVal == 1));
+            } else {
+                double rate = getValidDouble("Enter Hourly Rate ($): ", 0.0);
+                double hours = getValidDouble("Enter Flight Hours (e.g. 2.5): ", 0.1);
+                double fee = getValidDouble("Enter Overhead / Catering Fee ($): ", 0.0);
+                airline.addFlight(std::make_shared<CharterFlight>(fNo, orig, dest, depTime, seats, seats, rate, hours, fee));
             }
             UIHelper::printSuccessMessage("Flight Route successfully authorized!");
         } catch (const std::exception& e) { UIHelper::printErrorMessage(e.what()); }
@@ -375,12 +392,7 @@ switch (choice) {
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
         std::cout << "--- DECOMMISSION FLIGHT ROUTE ---\n";
-        std::string fNo = getNonEmptyString("Enter Flight Number [or '0' to cancel]: ");
-        if (fNo == "0") {
-            UIHelper::printWarningMessage("Action cancelled. Returning to main menu.");
-            waitForEnter();
-            break;
-        }
+        std::string fNo = getNonEmptyString("Enter Flight Number: ");
         if (airline.removeFlight(fNo)) { UIHelper::printSuccessMessage("Flight Route decommissioned successfully."); }
         else { UIHelper::printErrorMessage("Error: Flight Route " + fNo + " not found."); }
         waitForEnter();
@@ -406,8 +418,7 @@ switch (choice) {
                 case 1: {
                     UIHelper::clearScreen();
                     UIHelper::printWelcomeBanner();
-                    std::string num = getNonEmptyString("Enter Flight Number to find (e.g. DF-101) [or '0' to cancel]: ");
-                    if (num == "0") break;
+                    std::string num = getNonEmptyString("Enter Flight Number to find (e.g. DF-101): ");
                     auto flights = airline.getFlights();
                     auto it = std::find_if(flights.begin(), flights.end(), [&](const auto& f){ return f->getFlightNumber() == num; });
                     if (it != flights.end()) {
@@ -422,10 +433,8 @@ switch (choice) {
                 case 2: {
                     UIHelper::clearScreen();
                     UIHelper::printWelcomeBanner();
-                    std::string orig = getNonEmptyString("Enter Origin City/Airport [or '0' to cancel]: ");
-                    if (orig == "0") break;
-                    std::string dest = getNonEmptyString("Enter Destination City/Airport [or '0' to cancel]: ");
-                    if (dest == "0") break;
+                    std::string orig = getNonEmptyString("Enter Origin City/Airport: ");
+                    std::string dest = getNonEmptyString("Enter Destination City/Airport: ");
                     auto flights = airline.getFlights();
                     auto matches = searchItems(flights, [&](const auto& f){ return f->getOrigin() == orig && f->getDestination() == dest; });
                     if (matches.empty()) {
@@ -442,8 +451,7 @@ switch (choice) {
                 case 3: {
                     UIHelper::clearScreen();
                     UIHelper::printWelcomeBanner();
-                    std::string date = getNonEmptyString("Enter Departure Date (YYYY-MM-DD) [or '0' to cancel]: ");
-                    if (date == "0") break;
+                    std::string date = getNonEmptyString("Enter Departure Date (YYYY-MM-DD): ");
                     auto flights = airline.getFlights();
                     auto matches = searchItems(flights, [&](const auto& f){ return f->getDepartureTime().find(date) != std::string::npos; });
                     if (matches.empty()) {
@@ -471,13 +479,16 @@ switch (choice) {
     case 5: { // Register Passenger (Register New Passenger Profile)
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
-        std::cout << "--- REGISTER NEW PASSENGER PROFILE ---\n";
-        std::string id = getNonEmptyString("Enter Passenger ID (e.g. P-404) [or '0' to cancel]: ");
-        if (id == "0") {
-            UIHelper::printWarningMessage("Registration cancelled. Returning to main menu.");
+        UIHelper::printMenuBox("PASSENGER REGISTRATION MENU", {"1. Register New Passenger", "2. Return to Main Menu"});
+        int subChoice = getValidInt("Select option (1-2): ", 1, 2);
+        if (subChoice == 2) {
+            // Return to main menu without registering
             waitForEnter();
             break;
         }
+        std::cout << "--- REGISTER NEW PASSENGER PROFILE ---\n";
+        std::string id = getNonEmptyString("Enter Passenger ID (e.g. P-404) or type 'cancel' to return: ");
+        if (id == "cancel") { waitForEnter(); break; }
         if (airline.findPassenger(id)) { UIHelper::printErrorMessage("Error: Passenger ID already exists."); waitForEnter(); break; }
         std::string name = getNonEmptyString("Enter Passenger Full Name: ");
         std::string email = getNonEmptyString("Enter Email Address: ");
@@ -494,15 +505,18 @@ switch (choice) {
     case 6: { // Remove Passenger (Remove Passenger Profile)
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
-        std::cout << "--- REMOVE PASSENGER PROFILE ---\n";
-        std::string pId = getNonEmptyString("Enter Passenger ID [or '0' to cancel]: ");
-        if (pId == "0") {
-            UIHelper::printWarningMessage("Action cancelled. Returning to main menu.");
+        UIHelper::printMenuBox("REMOVE PASSENGER PROFILE", {"1. Continue", "0. Return to Main Menu"});
+        int subChoice = getValidInt("Select option (0-1): ", 0, 1);
+        if (subChoice == 0) { // Return to main menu
             waitForEnter();
             break;
         }
-        if (airline.removePassenger(pId)) UIHelper::printSuccessMessage("Passenger profile removed successfully.");
-        else UIHelper::printErrorMessage("Error: Passenger ID " + pId + " not found.");
+        // Continue with removal
+        std::string pId = getNonEmptyString("Enter Passenger ID: ");
+        if (airline.removePassenger(pId))
+            UIHelper::printSuccessMessage("Passenger profile removed successfully.");
+        else
+            UIHelper::printErrorMessage("Error: Passenger ID " + pId + " not found.");
         waitForEnter();
         break;
     }
@@ -510,12 +524,7 @@ switch (choice) {
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
         std::cout << "--- RETRIEVE TRAVEL BOOKING HISTORY ---\n";
-        std::string pId = getNonEmptyString("Enter Passenger ID [or '0' to cancel]: ");
-        if (pId == "0") {
-            UIHelper::printWarningMessage("Action cancelled. Returning to main menu.");
-            waitForEnter();
-            break;
-        }
+        std::string pId = getNonEmptyString("Enter Passenger ID: ");
         auto passenger = airline.findPassenger(pId);
         if (!passenger) { UIHelper::printErrorMessage("Error: Passenger ID " + pId + " not found."); waitForEnter(); break; }
         std::cout << "\n" << UIHelper::BOLD << UIHelper::BLUE << "PASSENGER PROFILE:\n" << UIHelper::RESET;
@@ -534,18 +543,8 @@ switch (choice) {
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
         std::cout << "--- RESERVE BOARDING PASS ---\n";
-        std::string pId = getNonEmptyString("Enter Passenger ID [or '0' to cancel]: ");
-        if (pId == "0") {
-            UIHelper::printWarningMessage("Booking cancelled. Returning to main menu.");
-            waitForEnter();
-            break;
-        }
-        std::string fNo = getNonEmptyString("Enter Flight Number [or '0' to cancel]: ");
-        if (fNo == "0") {
-            UIHelper::printWarningMessage("Booking cancelled. Returning to main menu.");
-            waitForEnter();
-            break;
-        }
+        std::string pId = getNonEmptyString("Enter Passenger ID: ");
+        std::string fNo = getNonEmptyString("Enter Flight Number: ");
         UIHelper::printMenuBox("SEAT SELECTION SECTOR", {"1. Select a Custom Seat number", "2. Auto-allocate an available seat"});
         int seatChoice = getValidInt("\nSelect seat option (1-2): ", 1, 2);
         int requestedSeat = 0;
@@ -561,12 +560,7 @@ switch (choice) {
         UIHelper::clearScreen();
         UIHelper::printWelcomeBanner();
         std::cout << "--- CANCEL RESERVED TICKET ---\n";
-        std::string tId = getNonEmptyString("Enter Ticket ID to cancel (e.g. TKT-DF-101-101) [or '0' to cancel]: ");
-        if (tId == "0") {
-            UIHelper::printWarningMessage("Action cancelled. Returning to main menu.");
-            waitForEnter();
-            break;
-        }
+        std::string tId = getNonEmptyString("Enter Ticket ID to cancel (e.g. TKT-DF-101-101): ");
         try { airline.cancelTicket(tId); } catch (const std::exception& e) { UIHelper::printErrorMessage(e.what()); }
         waitForEnter();
         break;

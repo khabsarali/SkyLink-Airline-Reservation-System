@@ -150,10 +150,23 @@ classDiagram
         + getIntlTax() double
         + getFuelSurcharge() double
         + getRequiresVisa() bool
+    class CharterFlight {
+        - double hourlyRate
+        - double flightHours
+        - double overheadFee
+        + CharterFlight(string, string, string, string, int, int, double, double, double)
+        + calculateBaseFare() double
+        + displayDetails() void
+        + getFlightType() string
+        + print(ostream&) void
+        + getHourlyRate() double
+        + getFlightHours() double
+        + getOverheadFee() double
     }
 
     Flight <|-- DomesticFlight
     Flight <|-- InternationalFlight
+    Flight <|-- CharterFlight
 
     class Passenger {
         <<Abstract>>
